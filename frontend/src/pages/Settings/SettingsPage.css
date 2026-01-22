@@ -1,0 +1,11 @@
+.settings-page .page-title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+}
+
+.settings-page .settings-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+

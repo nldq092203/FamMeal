@@ -1,0 +1,94 @@
+/* Calendar Range Slider Styling */
+.calendar-range-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--primary) 90%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 90%, transparent) var(--slider-percent, 50%),
+    color-mix(in srgb, var(--muted) 40%, transparent) var(--slider-percent, 50%),
+    color-mix(in srgb, var(--muted) 40%, transparent) 100%
+  );
+  transition: background 0.15s ease;
+}
+
+/* Webkit (Chrome, Safari, Edge) Thumb */
+.calendar-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 3px solid var(--primary);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 
+    0 3px 12px rgba(0, 0, 0, 0.2),
+    0 0 0 6px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.calendar-range-slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 
+    0 1px 4px rgba(0, 0, 0, 0.15),
+    0 0 0 8px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* Firefox Thumb */
+.calendar-range-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 3px solid var(--primary);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.calendar-range-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 
+    0 3px 12px rgba(0, 0, 0, 0.2),
+    0 0 0 6px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.calendar-range-slider::-moz-range-thumb:active {
+  transform: scale(1.05);
+  box-shadow: 
+    0 1px 4px rgba(0, 0, 0, 0.15),
+    0 0 0 8px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+/* Webkit Track */
+.calendar-range-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+}
+
+/* Firefox Track */
+.calendar-range-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+}
+
+/* Focus state for accessibility */
+.calendar-range-slider:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}

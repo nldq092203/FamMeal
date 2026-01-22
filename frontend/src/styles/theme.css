@@ -1,0 +1,107 @@
+/* ==========================
+   FamMeal Color Theme
+   ========================== */
+
+:root {
+  /* --- Base Backgrounds (New Palette) --- */
+  --bg-app: #F2F0E9;          /* Slightly darker beige for main window */
+  --bg-card: #F9F7F1;         /* Cream card background */
+
+  /* --- Text Colors (New Palette) --- */
+  /* 
+   * Usage in Tailwind:
+   * - text-heading → var(--text-primary) → #568B6E (Green for headings)
+   * - text-body → var(--text-body) → #3A5A40 (Dark Green for paragraph text)
+   * - text-muted-foreground → var(--text-muted) → #525E54 (Muted grey-green)
+   * - text-white → var(--text-white) → #FFFFFF (For text on dark buttons)
+   * 
+   * Also available via semantic tokens:
+   * - text-foreground → var(--foreground) → var(--color-text-primary) → var(--text-body)
+   * - text-muted-foreground → var(--muted-foreground) → var(--color-text-secondary) → var(--text-muted)
+   * - text-primary-foreground → var(--primary-foreground) → var(--color-text-inverse) → var(--text-white)
+   */
+  --text-primary: #568B6E;    /* Green for headings */
+  --text-body: #3A5A40;       /* Dark Green for paragraph text */
+  --text-muted: #525E54;      /* Muted grey-green for subtitles */
+  --text-white: #FFFFFF;      /* For text on dark buttons */
+
+  /* --- Main Actions (New Palette) --- */
+  --btn-primary: #7FBFA0;     /* Active Green */
+  --btn-primary-muted: #B2D7C6; /* Inactive Green */
+  --btn-secondary: #E1EFE6;   /* Light Mint secondary button */
+
+  /* --- "Toned Down" Accent Buttons --- */
+  --btn-info: #E0C088;        /* Muted Ochre (replaces bright yellow) */
+  --btn-error: #D18E85;       /* Soft Terracotta (replaces bright red) */
+
+  /* --- Status / Alert Colors --- */
+  --status-success: #63A375;
+  --status-warning: #E8D696;
+  --status-error-bg: #CF7E76;
+
+  /* ==========================
+     Mapped Design Tokens
+     ========================== */
+
+  /* Primary Colors */
+  --color-primary: var(--btn-primary);
+  --color-primary-dark: #4B9573;
+  --color-primary-light: var(--btn-primary-muted);
+  --color-primary-pale: #EDF3ED;
+  --color-primary-strong: var(--btn-primary);
+  --color-primary-strong-hover: var(--color-primary-dark);
+  
+  /* Semantic Colors */
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-error: var(--status-error-bg);
+  --color-info: var(--btn-info);
+  
+  /* Neutral Colors */
+  --color-bg-primary: var(--bg-app);
+  --color-bg-secondary: var(--bg-app);
+  --color-bg-tertiary: var(--bg-card);
+  --color-surface: var(--bg-card);
+  --color-surface-hover: #E8E0CF;
+  
+  /* Text Colors */
+  --color-text-heading: var(--text-primary);
+  --color-text-primary: var(--text-body);
+  --color-text-secondary: var(--text-muted);
+  --color-text-tertiary: #8A958D;
+  --color-text-inverse: var(--text-white);
+  
+  /* Border Colors */
+  --color-border: #DDD0B8;
+  --color-border-light: #E8DECB;
+  --color-border-focus: var(--color-primary);
+  
+  /* Status Colors */
+  --color-status-locked: var(--text-primary);
+  --color-status-planning: var(--btn-info);
+  --color-status-completed: var(--status-success);
+
+
+  /* shadcn/ui tokens (mapped) */
+  --background: var(--color-bg-secondary);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text-primary);
+  --primary: var(--color-primary-strong);
+  --primary-foreground: var(--color-text-inverse);
+  --secondary: var(--color-primary-light);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-primary-pale);
+  --muted-foreground: var(--color-text-secondary);
+  --accent: var(--btn-info);
+  --accent-foreground: var(--color-text-primary);
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-text-inverse);
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary-strong);
+  --radius: 0.75rem;
+
+}

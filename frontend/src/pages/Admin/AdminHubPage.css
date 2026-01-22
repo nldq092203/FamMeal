@@ -1,0 +1,12 @@
+.admin-hub-page .admin-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+}
+
+.admin-hub-page .admin-meal-meta {
+  display: flex;
+  flex-direction: column;
+}
+
