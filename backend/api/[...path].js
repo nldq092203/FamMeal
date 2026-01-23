@@ -23,26 +23,27 @@ async function getApp() {
 
   return app;
 }
-
 function normalizeVercelCatchAllUrl(req) {
   if (typeof req.url !== 'string') return;
 
-  // Vercel sometimes passes catch-all as "/?path=api/users"
   const u = new URL(req.url, 'http://local');
   const p = u.searchParams.get('path');
   if (!p) return;
 
-  // remove the special param and rebuild url
+  // Remove the special "path" param
   u.searchParams.delete('path');
   const rest = u.searchParams.toString();
-  const realPath = '/' + p.replace(/^\/+/, '');
 
-  req.url = rest ? `${realPath}?${rest}` : realPath;
+  // If req.url already has a pathname like "/api/health",
+  // Vercel may set path="health" or path="api/health".
+  // We prefer the *real path* from "p" only when pathname is "/" (or empty).
+  // Otherwise keep current pathname.
+  let finalPath = u.pathname;
+
+  // If Vercel routed everything to "/" and put the real path in ?path=...
+  if (finalPath === '/' || finalPath === '') {
+    finalPath = '/' + p.replace(/^\/+/, '');
+  }
+
+  req.url = rest ? `${finalPath}?${rest}` : finalPath;
 }
-
-module.exports = async function handler(req, res) {
-  normalizeVercelCatchAllUrl(req);
-
-  const app = await getApp();
-  app.server.emit('request', req, res);
-};
