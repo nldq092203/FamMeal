@@ -1,0 +1,20 @@
+.nav-label {
+  font-size: var(--font-size-xs);
+}
+
+/* Smooth transition for active state */
+.nav-item {
+  position: relative;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background-color: var(--color-primary-strong);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}

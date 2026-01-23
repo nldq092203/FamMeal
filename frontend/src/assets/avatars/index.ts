@@ -1,0 +1,35 @@
+import panda from './panda.png'
+import raccoon from './raccoon.png'
+import cat from './cat.png'
+import dog from './dog.png'
+import rabbit from './rabbit.png'
+import bear from './bear.png'
+import elephant from './elephant.png'
+import fox from './fox.png'
+import giraffe from './giraffe.png'
+import koala from './koala.png'
+import penguin from './penguin.png'
+import frog from './frog.png'
+
+export type AvatarId = 'panda' | 'raccoon' | 'cat' | 'dog' | 'rabbit' | 'bear' | 'elephant' | 'fox' | 'giraffe' | 'koala' | 'penguin' | 'frog'
+
+export const avatars: { id: AvatarId; label: string; src: string }[] = [
+  { id: 'panda', label: 'Panda', src: panda },
+  { id: 'raccoon', label: 'Raccoon', src: raccoon },
+  { id: 'cat', label: 'Cat', src: cat },
+  { id: 'dog', label: 'Dog', src: dog },
+  { id: 'rabbit', label: 'Rabbit', src: rabbit },
+  { id: 'bear', label: 'Bear', src: bear },
+  { id: 'elephant', label: 'Elephant', src: elephant },
+  { id: 'fox', label: 'Fox', src: fox },
+  { id: 'giraffe', label: 'Giraffe', src: giraffe },
+  { id: 'koala', label: 'Koala', src: koala },
+  { id: 'penguin', label: 'Penguin', src: penguin },
+  { id: 'frog', label: 'Frog', src: frog },
+]
+
+export function getAvatarSrc(avatarId?: string | null) {
+  if (!avatarId) return avatars[0]?.src
+  return avatars.find((a) => a.id === avatarId)?.src ?? avatars[0]?.src
+}
+
