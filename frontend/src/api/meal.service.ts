@@ -9,6 +9,7 @@ import type {
   Pagination,
   Proposal,
   Vote,
+  MealMyVote,
 
 } from '@/types';
 
@@ -44,6 +45,11 @@ export const mealService = {
 
   async getMealSummary(id: string): Promise<MealSummary> {
     const response = await apiClient.get<ApiResponse<MealSummary>>(`/meals/${id}/summary`);
+    return unwrapApiResponse(response.data);
+  },
+
+  async getMyVotesForMeal(mealId: string): Promise<MealMyVote[]> {
+    const response = await apiClient.get<ApiResponse<MealMyVote[]>>(`/meals/${mealId}/votes/my-votes`);
     return unwrapApiResponse(response.data);
   },
 
@@ -103,6 +109,14 @@ export const mealService = {
   },
 
   // Voting
+  async bulkCastVotes(
+    mealId: string,
+    votes: Array<{ proposalId: string; rankPosition: number }>
+  ): Promise<Vote[]> {
+    const response = await apiClient.post<ApiResponse<Vote[]>>(`/meals/${mealId}/votes/bulk`, { votes });
+    return unwrapApiResponse(response.data);
+  },
+
   async castVote(proposalId: string, rankPosition: number): Promise<Vote> {
     const response = await apiClient.post<ApiResponse<Vote>>(`/proposals/${proposalId}/votes`, {
       rankPosition,
@@ -129,7 +143,8 @@ export const adminMealService = {
   async finalizeMeal(
     mealId: string,
     data: {
-      selectedProposalId: string;
+      selectedProposalIds: string[];
+      cookUserId: string;
       reason?: string;
     }
   ): Promise<Meal> {

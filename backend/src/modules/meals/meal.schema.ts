@@ -46,7 +46,6 @@ export const createMealSchema = z.object({
 export const updateMealSchema = z.object({
   scheduledFor: dateOnlySchema.optional(),
   mealType: z.enum(mealTypeEnum.enumValues).optional(),
-  status: z.enum(mealStatusEnum.enumValues).optional(),
   constraints: mealConstraintsSchema.optional(),
 });
 

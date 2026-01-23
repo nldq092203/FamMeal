@@ -113,6 +113,103 @@ npm run db:migrate
 npm run db:studio
 ```
 
+## 📊 Database Schema (ERD)
+
+```mermaid
+erDiagram
+    users ||--o{ family_members : "belongs to"
+    users ||--o{ proposals : "creates"
+    users ||--o{ votes : "casts"
+    users ||--o{ meals : "cooks"
+    families ||--o{ family_members : "has"
+    families ||--o{ meals : "owns"
+    meals ||--o{ proposals : "receives"
+    proposals ||--o{ votes : "gets"
+
+    users {
+        uuid id PK
+        varchar email UK "unique"
+        varchar password "hashed"
+        varchar username UK "unique"
+        varchar name
+        enum avatarId "default: panda"
+        timestamp createdAt
+        timestamp updatedAt
+        timestamp deletedAt "soft delete"
+    }
+
+    families {
+        uuid id PK
+        varchar name
+        enum avatarId "default: panda"
+        jsonb settings "cuisine, dietary, budget"
+        timestamp createdAt
+        timestamp updatedAt
+        timestamp deletedAt "soft delete"
+    }
+
+    family_members {
+        uuid familyId FK,PK
+        uuid userId FK,PK
+        enum role "ADMIN or MEMBER"
+        timestamp joinedAt
+    }
+
+    meals {
+        uuid id PK
+        uuid familyId FK
+        uuid cookUserId FK "default: family ADMIN"
+        date scheduledFor
+        enum mealType "BREAKFAST, LUNCH, DINNER"
+        enum status "PLANNING, LOCKED, COMPLETED, CANCELLED"
+        jsonb constraints "budget, prep time, dietary"
+        jsonb finalDecision "selected proposal, decided by"
+        timestamp votingClosedAt
+        timestamp finalizedAt
+        timestamp createdAt
+        timestamp updatedAt
+        timestamp deletedAt "soft delete"
+    }
+
+    proposals {
+        uuid id PK
+        uuid mealId FK
+        uuid userId FK
+        varchar dishName
+        text ingredients
+        text notes
+        jsonb extra "image URLs"
+        timestamp createdAt
+        timestamp updatedAt
+        timestamp deletedAt "soft delete"
+    }
+
+    votes {
+        uuid id PK
+        uuid proposalId FK
+        uuid userId FK
+        integer rankPosition "1 = top choice"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+```
+
+### Key Relationships
+
+- **Users ↔ Families**: Many-to-many through `family_members` junction table
+- **Families → Meals**: One-to-many (each family has multiple meals)
+- **Meals → Proposals**: One-to-many (each meal has multiple proposals)
+- **Proposals → Votes**: One-to-many (each proposal can receive multiple votes)
+- **Users → Proposals**: One-to-many (each user can create multiple proposals)
+- **Users → Votes**: One-to-many (each user can cast multiple votes)
+
+### Voting System
+
+The voting system uses **ranked voting** (Borda count):
+- Each user ranks proposals from 1 (best) to 10 (worst)
+- Rank 1 = 10 points, Rank 2 = 9 points, ..., Rank 10 = 1 point
+- Unique constraint ensures one user cannot assign the same rank to multiple proposals
+
 ## 🔧 Development
 
 ```bash

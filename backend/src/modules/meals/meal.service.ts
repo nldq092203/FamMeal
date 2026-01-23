@@ -4,16 +4,17 @@ import { meals, Meal } from '@/db/schema/meal.table';
 import { familyMembers } from '@/db/schema/family-member.table';
 import { CreateMealInput, UpdateMealInput, ListMealsQuery } from './meal.schema';
 import { NotFoundError, ForbiddenError, ConflictError } from '@/shared/errors';
+import { checkFamilyRole } from '@/middleware/rbac.middleware';
 
 export class MealService {
   /**
    * Create a new meal plan
    */
   async createMeal(userId: string, data: CreateMealInput): Promise<Meal> {
-    // 1. Check if user is member of the family
-    await this.checkFamilyMembership(data.familyId, userId);
+    // 1. Only family ADMIN can create meals
+    await checkFamilyRole(userId, data.familyId, 'ADMIN');
 
-    // 2. Check for duplicates (same family, date, type)
+    // 3. Check for duplicates (same family, date, type)
     const [existingMeal] = await db
       .select()
       .from(meals)
@@ -29,7 +30,7 @@ export class MealService {
       );
     }
 
-    // 3. Create meal
+    // 4. Create meal
     const [newMeal] = await db
       .insert(meals)
       .values({
@@ -38,6 +39,7 @@ export class MealService {
         mealType: data.mealType,
         constraints: data.constraints || {},
         status: 'PLANNING',
+        cookUserId: userId,
       })
       .returning();
 
@@ -103,6 +105,9 @@ export class MealService {
    */
   async updateMeal(id: string, userId: string, data: UpdateMealInput): Promise<Meal> {
     const meal = await this.getMealById(id, userId);
+
+    // Only family ADMIN can update meal constraints/details
+    await checkFamilyRole(userId, meal.familyId, 'ADMIN');
 
     // Only allow updates if not COMPLETED (unless admin? for now simple rule)
     if (meal.status === 'COMPLETED') {

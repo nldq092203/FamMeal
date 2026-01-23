@@ -1,34 +1,23 @@
 import { useMemo } from 'react'
-import type { DateRange } from './FullCalendarSheet'
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface WeeklyCalendarProps {
-  selectedDate: Date
-  onDateSelect: (date: Date) => void
+  weekStart: Date
+  selectedDays: Set<string>
+  onDayToggle: (date: Date) => void
+  onWeekChange: (weekStart: Date) => void
   onOpenFullCalendar?: () => void
-  range?: DateRange
 }
 
-function sameDay(a: Date, b: Date) {
-  return a.toDateString() === b.toDateString()
-}
-
-function isBetweenInclusive(date: Date, start: Date, end: Date) {
-  const t = date.getTime()
-  return t >= start.getTime() && t <= end.getTime()
-}
-
-export function WeeklyCalendar({ selectedDate, onDateSelect, onOpenFullCalendar, range }: WeeklyCalendarProps) {
-  const currentWeekStart = useMemo(() => {
-    const base = new Date(selectedDate)
-    const diff = base.getDate() - base.getDay() // Sunday-start
-    return new Date(base.setDate(diff))
-  }, [selectedDate])
-
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(currentWeekStart)
-    date.setDate(currentWeekStart.getDate() + i)
-    return date
-  })
+export function WeeklyCalendar({ weekStart, selectedDays, onDayToggle, onWeekChange, onOpenFullCalendar }: WeeklyCalendarProps) {
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + i)
+      return date
+    })
+  }, [weekStart])
 
   const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -38,59 +27,102 @@ export function WeeklyCalendar({ selectedDate, onDateSelect, onOpenFullCalendar,
   }
 
   const isSelected = (date: Date) => {
-    if (range?.start) {
-      if (range.end) return sameDay(date, range.start) || sameDay(date, range.end)
-      return sameDay(date, range.start)
-    }
-    return sameDay(date, selectedDate)
+    return selectedDays.has(date.toDateString())
   }
 
-  const isInRange = (date: Date) => {
-    if (!range?.start || !range.end) return false
-    return isBetweenInclusive(date, range.start, range.end)
+  const handlePreviousWeek = () => {
+    const newWeekStart = new Date(weekStart)
+    newWeekStart.setDate(weekStart.getDate() - 7)
+    onWeekChange(newWeekStart)
+  }
+
+  const handleNextWeek = () => {
+    const newWeekStart = new Date(weekStart)
+    newWeekStart.setDate(weekStart.getDate() + 7)
+    onWeekChange(newWeekStart)
+  }
+
+  const handleToday = () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diff = today.getDate() - today.getDay() // Sunday-start
+    const weekStart = new Date(today)
+    weekStart.setDate(diff)
+    onWeekChange(weekStart)
   }
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="t-section-title">This Week</div>
-        <button
-          type="button"
-          className="text-sm font-medium text-primary hover:text-primary/80"
-          onClick={onOpenFullCalendar}
-        >
-          Full Calendar
-        </button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handlePreviousWeek}
+            className="h-7 w-7 p-0"
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToday}
+            className="text-xs px-2 h-7"
+          >
+            Today
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNextWeek}
+            className="h-7 w-7 p-0"
+            aria-label="Next week"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {onOpenFullCalendar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpenFullCalendar}
+              className="h-7 w-7 p-0 ml-2"
+              aria-label="Open full calendar"
+              title="Open full calendar"
+            >
+              <Calendar className="h-4 w-4 text-foreground" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-2">
         <div className="grid grid-cols-7 gap-1">
-        {weekDays.map((date, index) => {
-          const isCurrentDay = isToday(date)
-          const isSelectedDay = isSelected(date)
-          const inRange = isInRange(date)
+          {weekDays.map((date, index) => {
+            const isCurrentDay = isToday(date)
+            const isSelectedDay = isSelected(date)
 
-          return (
-            <button
-              key={date.toISOString()}
-              onClick={() => onDateSelect(date)}
-              className={[
-                'flex flex-col items-center justify-center rounded-xl py-2 transition-all',
-                isSelectedDay
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : inRange
-                  ? 'bg-primary/10 text-primary'
-                  : isCurrentDay
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-              type="button"
-            >
-              <span className="text-xs font-semibold mb-1">{dayNames[index]}</span>
-              <span className="text-lg font-bold leading-none">{date.getDate()}</span>
-            </button>
-          )
-        })}
+            return (
+              <button
+                key={date.toISOString()}
+                onClick={() => onDayToggle(date)}
+                className={[
+                  'flex flex-col items-center justify-center rounded-xl py-2 transition-all cursor-pointer',
+                  isSelectedDay
+                    ? 'bg-primary text-primary-foreground shadow-md font-semibold'
+                    : isCurrentDay
+                    ? 'bg-primary/10 text-primary border border-primary/30'
+                    : 'text-muted-foreground hover:bg-muted/50',
+                ].join(' ')}
+                type="button"
+                aria-label={`Select ${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+              >
+                <span className="text-xs font-semibold mb-1">{dayNames[index]}</span>
+                <span className="text-lg font-bold leading-none">{date.getDate()}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

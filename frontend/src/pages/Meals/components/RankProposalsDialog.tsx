@@ -6,6 +6,7 @@ import type { ProposalWithStats } from '@/types'
 import { useCastVotesMutation } from '@/query/hooks/useCastVotesMutation'
 import { useToast } from '@/context/ToastContext'
 import { getApiErrorMessage } from '@/api/error'
+import { useMyMealVotesQuery } from '@/query/hooks/useMyMealVotesQuery'
 
 interface RankProposalsDialogProps {
   open: boolean
@@ -30,18 +31,40 @@ export function RankProposalsDialog({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   const castVotes = useCastVotesMutation()
+  const myVotesQuery = useMyMealVotesQuery(mealId, open)
 
   const isSubmitting = castVotes.isPending
+  const isVotesLoading = myVotesQuery.isLoading
+  const myVotesData = myVotesQuery.data
+  const hasExistingVotes =
+    (myVotesData ?? []).some((v) => Number.isInteger(v.rankPosition) && v.rankPosition >= 1)
 
   // Initialize ranked proposals based on existing votes
   useEffect(() => {
     if (!open || proposals.length === 0) return
+    if (isVotesLoading) return
 
     const sortedProposals = [...proposals]
-    sortedProposals.sort((a, b) => (b.voteStats.totalScore ?? 0) - (a.voteStats.totalScore ?? 0))
+    const myVotes = myVotesData ?? []
+    const normalizedMyVotes = myVotes
+      .filter((v) => Number.isInteger(v.rankPosition) && v.rankPosition >= 1)
+      .map((v) => ({ proposalId: v.proposalId, rankPosition: v.rankPosition }))
+    const hasMyVotes = normalizedMyVotes.length > 0
+    const myVoteMap = hasMyVotes ? new Map(normalizedMyVotes.map((v) => [v.proposalId, v.rankPosition])) : null
+
+    sortedProposals.sort((a, b) => {
+      const aRank = myVoteMap?.get(a.id)
+      const bRank = myVoteMap?.get(b.id)
+
+      if (typeof aRank === 'number' && typeof bRank === 'number') return aRank - bRank
+      if (typeof aRank === 'number') return -1
+      if (typeof bRank === 'number') return 1
+
+      return (b.voteStats.totalScore ?? 0) - (a.voteStats.totalScore ?? 0)
+    })
 
     setRankedProposals(sortedProposals)
-  }, [open, proposals])
+  }, [open, proposals, myVotesData, isVotesLoading])
 
   const handleDragStart = (index: number) => {
     if (isSubmitting) return
@@ -100,78 +123,99 @@ export function RankProposalsDialog({
         {/* Instructions */}
         <div className="px-6 py-4 bg-muted/30 border-b">
           <p className="text-sm text-center text-muted-foreground leading-relaxed">
-            Drag and drop the dishes to order your preference.
-            <br />
-            Your <span className="font-semibold text-foreground">#1 choice</span> gets the most points!
+            {isVotesLoading ? (
+              'Loading your votes...'
+            ) : hasExistingVotes ? (
+              <>
+                You have already voted.
+                <br />
+                Drag to change it, then <span className="font-semibold text-foreground">Save</span>.
+              </>
+            ) : (
+              <>
+                You haven’t voted yet.
+                <br />
+                Make your choice, then <span className="font-semibold text-foreground">Save</span>.
+              </>
+            )}
           </p>
         </div>
 
         {/* Draggable list */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-          {rankedProposals.map((proposal, index) => {
-            const imageUrl = proposal.extra?.imageUrls?.[0]
-            const isDragging = draggedIndex === index
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {isVotesLoading ? (
+            <div className="py-10 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="h-4 w-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mr-2" />
+              Loading your votes...
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rankedProposals.map((proposal, index) => {
+                const imageUrl = proposal.extra?.imageUrls?.[0]
+                const isDragging = draggedIndex === index
 
-            return (
-              <div
-                key={proposal.id}
-                draggable={!isSubmitting}
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`
-                  relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-move
-                  ${isDragging ? 'opacity-50 border-primary' : 'border-border hover:border-primary/50'}
-                  ${index === 0 ? 'bg-primary/5 border-primary/30' : 'bg-card'}
-                `}
-              >
-                {/* Rank badge */}
-                <div
-                  className={`
-                    flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full font-bold text-lg
-                    ${index === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
-                  `}
-                >
-                  {index + 1}
-                </div>
+                return (
+                  <div
+                    key={proposal.id}
+                    draggable={!isSubmitting}
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`
+                      relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-move
+                      ${isDragging ? 'opacity-50 border-primary' : 'border-border hover:border-primary/50'}
+                      ${index === 0 ? 'bg-primary/5 border-primary/30' : 'bg-card'}
+                    `}
+                  >
+                    {/* Rank badge */}
+                    <div
+                      className={`
+                        flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full font-bold text-lg
+                        ${index === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
+                      `}
+                    >
+                      {index + 1}
+                    </div>
 
-                {/* Image */}
-                {imageUrl ? (
-                  <div className="flex-shrink-0 h-14 w-14 rounded-lg overflow-hidden bg-muted">
-                    <img src={imageUrl} alt={proposal.dishName} className="w-full h-full object-cover" />
+                    {/* Image */}
+                    {imageUrl ? (
+                      <div className="flex-shrink-0 h-14 w-14 rounded-lg overflow-hidden bg-muted">
+                        <img src={imageUrl} alt={proposal.dishName} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="flex-shrink-0 h-14 w-14 rounded-lg bg-muted border border-border" />
+                    )}
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm leading-tight truncate">{proposal.dishName}</h3>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
+                        <p className="text-xs text-muted-foreground truncate">
+                          Proposed by {proposal.userName || 'You'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Drag handle */}
+                    <button
+                      className="flex-shrink-0 p-2 -mr-1 hover:bg-muted rounded-lg transition-colors touch-none"
+                      aria-label="Drag to reorder"
+                    >
+                      <GripVertical className="h-5 w-5 text-muted-foreground" />
+                    </button>
+
+                    {/* Green checkmark for #1 */}
+                    {index === 0 && (
+                      <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center shadow-md">
+                        <Check className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="flex-shrink-0 h-14 w-14 rounded-lg bg-muted border border-border" />
-                )}
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm leading-tight truncate">{proposal.dishName}</h3>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground truncate">
-                      Proposed by {proposal.userName || 'You'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Drag handle */}
-                <button
-                  className="flex-shrink-0 p-2 -mr-1 hover:bg-muted rounded-lg transition-colors touch-none"
-                  aria-label="Drag to reorder"
-                >
-                  <GripVertical className="h-5 w-5 text-muted-foreground" />
-                </button>
-
-                {/* Green checkmark for #1 */}
-                {index === 0 && (
-                  <div className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center shadow-md">
-                    <Check className="h-4 w-4 text-primary-foreground" />
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Footer with submit button */}
@@ -180,7 +224,7 @@ export function RankProposalsDialog({
             size="lg"
             className="w-full h-12 rounded-xl"
             onClick={handleSubmit}
-            disabled={isSubmitting || rankedProposals.length === 0}
+            disabled={isVotesLoading || isSubmitting || rankedProposals.length === 0}
           >
             {isSubmitting ? (
               <>

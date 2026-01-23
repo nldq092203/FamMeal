@@ -1,10 +1,10 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import { votes, Vote } from '@/db/schema/vote.table';
 import { proposals } from '@/db/schema/proposal.table';
 import { meals } from '@/db/schema/meal.table';
 import { familyMembers } from '@/db/schema/family-member.table';
-import { CreateVoteInput } from './vote.schema';
+import { CreateVoteInput, BulkVoteInput } from './vote.schema';
 import { NotFoundError, ForbiddenError, ConflictError } from '@/shared/errors';
 
 export class VoteService {
@@ -100,6 +100,77 @@ export class VoteService {
   }
 
   /**
+   * Bulk cast/update votes for multiple proposals in a meal
+   * This allows users to submit all their rankings at once
+   */
+  async bulkCastVotes(userId: string, mealId: string, data: BulkVoteInput): Promise<Vote[]> {
+    return await db.transaction(async (tx) => {
+      // 1. Validate meal exists and get its status
+      const [meal] = await tx.select().from(meals).where(eq(meals.id, mealId));
+
+      if (!meal) {
+        throw new NotFoundError('Meal not found');
+      }
+
+      // 2. Check permissions
+      await this.checkFamilyMembership(meal.familyId, userId, tx);
+
+      // 3. Check meal status
+      if (meal.status !== 'PLANNING') {
+        throw new ForbiddenError('Voting is closed for this meal');
+      }
+
+      // 4. Validate all proposals belong to this meal
+      const mealProposals = await tx
+        .select({ id: proposals.id })
+        .from(proposals)
+        .where(eq(proposals.mealId, mealId));
+
+      const validProposalIds = new Set(mealProposals.map((p) => p.id));
+      for (const vote of data.votes) {
+        if (!validProposalIds.has(vote.proposalId)) {
+          throw new NotFoundError(`Proposal ${vote.proposalId} not found in this meal`);
+        }
+      }
+
+      // 5. Reject duplicate proposals and duplicate ranks in the request
+      const proposalIds = data.votes.map((v) => v.proposalId);
+      const uniqueProposalIds = new Set(proposalIds);
+      if (uniqueProposalIds.size !== proposalIds.length) {
+        throw new ConflictError('Cannot vote for the same proposal multiple times');
+      }
+
+      const rankPositions = data.votes.map((v) => v.rankPosition);
+      const uniqueRanks = new Set(rankPositions);
+      if (uniqueRanks.size !== rankPositions.length) {
+        throw new ConflictError('Cannot assign the same rank to multiple proposals');
+      }
+
+      // 6. Delete all existing votes for this user in this meal
+      const mealProposalIds = mealProposals.map((p) => p.id);
+      if (mealProposalIds.length) {
+        await tx
+          .delete(votes)
+          .where(and(eq(votes.userId, userId), inArray(votes.proposalId, mealProposalIds)));
+      }
+
+      // 7. Insert all new votes
+      const newVotes = await tx
+        .insert(votes)
+        .values(
+          data.votes.map((vote) => ({
+            userId,
+            proposalId: vote.proposalId,
+            rankPosition: vote.rankPosition,
+          }))
+        )
+        .returning();
+
+      return newVotes;
+    });
+  }
+
+  /**
    * Remove a vote
    */
   async deleteVote(id: string, userId: string): Promise<void> {
@@ -156,6 +227,44 @@ export class VoteService {
        .from(votes)
        .innerJoin(proposals, eq(votes.proposalId, proposals.id))
        .where(eq(proposals.mealId, mealId));
+  }
+
+  /**
+   * Get current user's votes for a meal with proposal details
+   */
+  async getUserVotesForMeal(mealId: string, userId: string): Promise<{
+    voteId: string;
+    proposalId: string;
+    dishName: string;
+    rankPosition: number;
+  }[]> {
+    // Check access via meal/family
+    const [meal] = await db
+      .select()
+      .from(meals)
+      .where(eq(meals.id, mealId));
+      
+    if (!meal) throw new NotFoundError('Meal not found');
+    
+    await this.checkFamilyMembership(meal.familyId, userId);
+
+    // Get user's votes for this meal with proposal details
+    const userVotes = await db
+      .select({
+        voteId: votes.id,
+        proposalId: votes.proposalId,
+        dishName: proposals.dishName,
+        rankPosition: votes.rankPosition,
+      })
+      .from(votes)
+      .innerJoin(proposals, eq(votes.proposalId, proposals.id))
+      .where(and(
+        eq(proposals.mealId, mealId),
+        eq(votes.userId, userId)
+      ))
+      .orderBy(votes.rankPosition);
+
+    return userVotes;
   }
 
   /**
@@ -269,8 +378,12 @@ export class VoteService {
   /**
    * Helper: Check if user is a member of the family
    */
-  private async checkFamilyMembership(familyId: string, userId: string): Promise<void> {
-    const [membership] = await db
+  private async checkFamilyMembership(
+    familyId: string,
+    userId: string,
+    client: Pick<typeof db, 'select'> = db
+  ): Promise<void> {
+    const [membership] = await client
       .select()
       .from(familyMembers)
       .where(and(

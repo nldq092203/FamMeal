@@ -20,4 +20,8 @@ export const queryKeys = {
     all: ['mealSummary'] as const,
     byId: (mealId: string) => [...queryKeys.mealSummary.all, mealId] as const,
   },
+  mealVotes: {
+    all: ['mealVotes'] as const,
+    myByMealId: (mealId: string) => [...queryKeys.mealVotes.all, 'myByMealId', mealId] as const,
+  },
 } as const

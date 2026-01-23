@@ -1,4 +1,4 @@
-import { X, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,6 @@ interface ActiveVotingCardProps {
     voters: Array<{ id: string; avatarId: AvatarId; name: string }>
   }
   onVote: (mealId: string) => void
-  onDismiss: () => void
 }
 
 // Generate contextual meal type label with time reference
@@ -36,9 +35,7 @@ const getMealTypeLabel = (mealType: MealType): string => {
   return `${context} ${label}`
 }
 
-export function ActiveVotingCard({ meal, onVote, onDismiss }: ActiveVotingCardProps) {
-  const remainingVotes = meal.votesNeeded - meal.currentVotes
-
+export function ActiveVotingCard({ meal, onVote }: ActiveVotingCardProps) {
   return (
     <Card className="overflow-hidden relative">
       <CardContent className="p-0">
@@ -72,8 +69,8 @@ export function ActiveVotingCard({ meal, onVote, onDismiss }: ActiveVotingCardPr
           </div>
         </div>
 
-        {/* Voters and Vote Count */}
-        <div className="px-4 py-3 flex items-center justify-between border-b">
+        {/* Voters */}
+        <div className="px-4 py-3 flex items-center border-b">
           <div className="flex items-center gap-2">
             {/* Voter Avatars */}
             <div className="flex -space-x-2">
@@ -93,30 +90,17 @@ export function ActiveVotingCard({ meal, onVote, onDismiss }: ActiveVotingCardPr
               )}
             </div>
           </div>
-
-          {/* Votes Needed */}
-          <p className="text-sm text-muted-foreground">
-            {remainingVotes} {remainingVotes === 1 ? 'vote' : 'votes'} needed
-          </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="p-4 flex gap-2">
+        {/* Action Button */}
+        <div className="p-4">
           <Button 
-            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
             size="lg"
             onClick={() => onVote(meal.id)}
           >
             <Check className="h-5 w-5 mr-2" />
             View & Rank Proposals
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11"
-            onClick={onDismiss}
-          >
-            <X className="h-5 w-5" />
           </Button>
         </div>
       </CardContent>

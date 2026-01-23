@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Search, ChevronDown, Check, Plus, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, Search, ChevronDown, Check, Plus, Image as ImageIcon, ChefHat } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useFamily } from '@/context/FamilyContext';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import './MealHistoryPage.css';
 
 const MealHistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const { familyId, isLoading: isFamilyLoading, error: familyError } = useFamily();
+  const { familyId, isLoading: isFamilyLoading, error: familyError, family } = useFamily();
   const { error: showErrorToast } = useToast();
 
   const historyQuery = useFamilyHistoryQuery(familyId, { limit: 10, offset: 0 })
@@ -119,6 +119,10 @@ const MealHistoryPage: React.FC = () => {
                     <h3 className="history-title">{meal.mealType} meal</h3>
                     <p className="history-meta">
                       {meal.proposalCount} proposals • {meal.voteCount} votes
+                      {meal.cookUserId && family?.members && (() => {
+                        const cook = family.members.find((m) => m.userId === meal.cookUserId)
+                        return cook ? ` • Chef: ${cook.name || cook.username}` : ''
+                      })()}
                     </p>
                   </div>
                 </Card>

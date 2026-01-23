@@ -52,3 +52,13 @@ export function useAddFamilyMemberMutation() {
   })
 }
 
+export function useRemoveFamilyMemberMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { familyId: string; memberId: string }) =>
+      adminFamilyService.removeMember(input.familyId, input.memberId),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.families.byId(variables.familyId) })
+    },
+  })
+}

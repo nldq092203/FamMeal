@@ -90,7 +90,8 @@ export interface MealConstraints {
 }
 
 export interface FinalDecision {
-  selectedProposalId: string;
+  selectedProposalIds: string[];
+  cookUserId?: string;
   decidedByUserId: string;
   reason?: string;
 }
@@ -109,6 +110,7 @@ export interface Meal {
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
+  cookUserId?: string;
 }
 
 export interface Proposal {
@@ -136,6 +138,13 @@ export interface Vote {
   deletedAt?: string | null;
 }
 
+export interface MealMyVote {
+  voteId: string;
+  proposalId: string;
+  dishName: string;
+  rankPosition: number;
+}
+
 // Extended types for API responses
 
 export interface VoteStats {
@@ -149,6 +158,11 @@ export interface ProposalWithStats extends Proposal {
   userUsername: string;
   voteStats: VoteStats;
   isSelected: boolean;
+  /**
+   * Optional current-user vote info when provided by the API.
+   * Not all endpoints include this field.
+   */
+  myVote?: Pick<Vote, 'id' | 'proposalId' | 'rankPosition'>;
 }
 
 export interface VoteSummary {
@@ -164,6 +178,11 @@ export interface MealSummary {
   meal: Meal;
   proposals: ProposalWithStats[];
   voteSummary: VoteSummary[];
+  /**
+   * Optional current-user votes when provided by the API.
+   * Used to show/edit a user's ranking without refetching.
+   */
+  myVotes?: Vote[];
   finalDecision?: FinalDecision;
 }
 
@@ -177,6 +196,7 @@ export interface MealHistoryItem {
   votingClosedAt?: string;
   finalizedAt?: string;
   hasFinalDecision: boolean;
+  cookUserId?: string;
 }
 
 export interface Pagination {

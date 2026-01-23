@@ -6,6 +6,7 @@ import { useToast } from '@/context/ToastContext';
 import { useMealSummaryQuery } from '@/query/hooks/useMealSummaryQuery';
 import { useFinalizeMealMutation, useReopenVotingMutation } from '@/query/hooks/useAdminMealMutations';
 import type { VoteSummary } from '@/types';
+import { useFamily } from '@/context/FamilyContext'
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ const AdminFinalizationPage: React.FC = () => {
   const navigate = useNavigate();
   const { mealId } = useParams();
   const toast = useToast();
+  const { family } = useFamily()
 
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +47,7 @@ const AdminFinalizationPage: React.FC = () => {
   }, [mealSummary, standings]);
 
   const [selectedWinner, setSelectedWinner] = useState<string>('');
+  const [cookUserId, setCookUserId] = useState<string>('');
   const [reason, setReason] = useState('');
 
   useEffect(() => {
@@ -59,6 +62,17 @@ const AdminFinalizationPage: React.FC = () => {
     if (!initial) return;
     setSelectedWinner((prev) => prev || initial);
   }, [mealSummary]);
+
+  useEffect(() => {
+    if (!mealSummary) return
+    const initialCook =
+      mealSummary.finalDecision?.cookUserId ??
+      mealSummary.proposals?.find((p) => p.id === selectedWinner)?.userId ??
+      family?.members?.[0]?.userId ??
+      ''
+    if (!initialCook) return
+    setCookUserId((prev) => prev || initialCook)
+  }, [family?.members, mealSummary, selectedWinner])
 
   const loadErrorMessage = useMemo(() => {
     const err = mealSummaryQuery.error;
@@ -82,10 +96,19 @@ const AdminFinalizationPage: React.FC = () => {
       toast.error('Please select a winning proposal.');
       return;
     }
+    if (!cookUserId) {
+      toast.error('Please assign a cook.');
+      return
+    }
 
     setError(null);
     try {
-      await finalizeMeal.mutateAsync({ mealId, selectedProposalId: selectedWinner, reason: reason || undefined });
+      await finalizeMeal.mutateAsync({
+        mealId,
+        selectedProposalId: selectedWinner,
+        cookUserId,
+        reason: reason || undefined,
+      });
       toast.success('Meal finalized.');
       navigate('/');
     } catch (err) {
@@ -221,6 +244,28 @@ const AdminFinalizationPage: React.FC = () => {
                 )}
               </label>
             ))}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="cook" className="form-label">
+              Assign Cook
+            </label>
+            <select
+              id="cook"
+              value={cookUserId}
+              onChange={(e) => setCookUserId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              disabled={isSaving || isLoading}
+            >
+              <option value="" disabled>
+                Select a cook…
+              </option>
+              {(family?.members ?? []).map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.name || m.username || 'Member'}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-group">

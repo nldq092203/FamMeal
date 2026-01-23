@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Users, Plus, Timer, Pencil, Vote } from 'lucide-react'
+import { ArrowLeft, Clock, Users, Plus, Timer, Pencil, Vote, MoreVertical, Trash2, Lock, Unlock, CheckCircle2, ChefHat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PageShell } from '@/components/Layout'
@@ -13,6 +13,14 @@ import { useAuth } from '@/context/AuthContext'
 import { EditProposalDialog } from './components/EditProposalDialog'
 import { ProposalRankings } from './components/ProposalRankings'
 import { RankProposalsDialog } from './components/RankProposalsDialog'
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AdminOnly } from '@/components/PermissionGate'
+import { EditMealDialog } from './components/EditMealDialog'
+import { FinalizeMealDialog } from './components/FinalizeMealDialog'
+import { useDeleteMealMutation } from '@/query/hooks/useDeleteMealMutation'
+import { useToast } from '@/context/ToastContext'
+import { getApiErrorMessage } from '@/api/error'
+import { useCloseVotingMutation, useReopenVotingMutation } from '@/query/hooks/useAdminMealMutations'
 import type { Proposal } from '@/types'
 
 function formatEndsIn(votingClosedAt: string) {
@@ -40,10 +48,21 @@ export default function MealDetailPage() {
   const mealSummaryQuery = useMealSummaryQuery(id || null)
   const { families, familyId, family } = useFamily()
   const { user } = useAuth()
+  const toast = useToast()
   const [showAddProposal, setShowAddProposal] = useState(false)
   const [showEditProposal, setShowEditProposal] = useState(false)
   const [showVotingDialog, setShowVotingDialog] = useState(false)
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null)
+  const [showAdminMenu, setShowAdminMenu] = useState(false)
+  const [showEditMeal, setShowEditMeal] = useState(false)
+  const [showDeleteMeal, setShowDeleteMeal] = useState(false)
+  const [showCloseVoting, setShowCloseVoting] = useState(false)
+  const [showReopenVoting, setShowReopenVoting] = useState(false)
+  const [showFinalizeMeal, setShowFinalizeMeal] = useState(false)
+
+  const deleteMealMutation = useDeleteMealMutation()
+  const closeVotingMutation = useCloseVotingMutation()
+  const reopenVotingMutation = useReopenVotingMutation()
 
   const summary = mealSummaryQuery.data
 
@@ -79,6 +98,7 @@ export default function MealDetailPage() {
     !hasVotes ? 'no-votes' : 
     votingOpen ? 'active' : 'closed'
   const showRankings = proposals.length > 0 // Show rankings even without votes to encourage voting
+  const mealStatus = meal.status
 
 
   return (
@@ -96,7 +116,16 @@ export default function MealDetailPage() {
             <h2 className="font-semibold text-lg">
               {mealDate.toLocaleDateString('en-US', { weekday: 'long' })} {MEAL_TYPE_LABELS[meal.mealType]}
             </h2>
-            <div className="w-10"></div>
+            <AdminOnly fallback={<div className="w-10" />}>
+              <button
+                type="button"
+                onClick={() => setShowAdminMenu(true)}
+                className="p-2 -mr-2 hover:bg-muted rounded-full transition-colors"
+                aria-label="Meal admin actions"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
+            </AdminOnly>
           </div>
         </div>
 
@@ -120,12 +149,6 @@ export default function MealDetailPage() {
                     <span className="tracking-wide text-xs font-semibold">VOTING OPEN</span>
                   </Badge>
                 ) : null}
-
-                <h1 className="text-4xl font-bold tracking-tight leading-[1.05]">
-                  {mealDate.toLocaleDateString('en-US', { weekday: 'long' })}
-                  <br />
-                  {MEAL_TYPE_LABELS[meal.mealType]}
-                </h1>
                 <p className="text-muted-foreground mt-2">
                   {mealDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
                 </p>
@@ -152,6 +175,18 @@ export default function MealDetailPage() {
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   <span>{memberCount ?? family?.members?.length} Joining</span>
+                </div>
+              )}
+
+              {meal.cookUserId && family?.members && (
+                <div className="flex items-center gap-2">
+                  <ChefHat className="h-4 w-4" />
+                  <span>
+                    Chef: {(() => {
+                      const cook = family.members.find((m) => m.userId === meal.cookUserId)
+                      return cook?.name || cook?.username || 'Unknown'
+                    })()}
+                  </span>
                 </div>
               )}
             </div>
@@ -236,18 +271,6 @@ export default function MealDetailPage() {
               proposals={proposals} 
               votingStatus={votingStatus}
             />
-            
-            {/* Vote Now Button - Show when voting is open */}
-            {votingOpen && (
-              <Button
-                size="lg"
-                onClick={() => setShowVotingDialog(true)}
-                className="w-full h-12 rounded-xl"
-              >
-                <Vote className="h-5 w-5 mr-2" />
-                Vote Now
-              </Button>
-            )}
           </div>
         )}
 
@@ -264,29 +287,36 @@ export default function MealDetailPage() {
               <p className="text-sm mt-1">Be the first to suggest a meal!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {proposals.map((proposal) => {
                 const imageUrl = proposal.extra?.imageUrls?.[0]
                 const isOwner = Boolean(user?.id) && proposal.userId === user?.id
                 const showEdit = canEditProposals && isOwner
                 return (
-                  <div key={proposal.id} className="rounded-2xl overflow-hidden border bg-card shadow-sm relative">
-                    <div className="aspect-square bg-muted relative">
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={proposal.dishName} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                          No photo
-                        </div>
-                      )}
+                  <div key={proposal.id} className="rounded-2xl border bg-card shadow-sm relative">
+                    <div 
+                      className="aspect-square bg-muted relative cursor-pointer"
+                      onClick={() => navigate(`/proposals/${proposal.id}`, { state: { mealId: id } })}
+                    >
+                      <div className="absolute inset-0 overflow-hidden rounded-t-2xl">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={proposal.dishName} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                            No photo
+                          </div>
+                        )}
+                      </div>
 
                       {showEdit ? (
                         <Button
                           type="button"
                           size="icon"
                           variant="secondary"
-                          className="absolute top-2 right-2 h-9 w-9 rounded-full bg-background/80 backdrop-blur border border-border shadow-sm"
-                          onClick={() => {
+                          className="absolute top-2 right-2 h-9 w-9 rounded-full bg-background/85 backdrop-blur border border-border shadow-md z-20 pointer-events-auto"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
                             setEditingProposal(proposal)
                             setShowEditProposal(true)
                           }}
@@ -296,7 +326,10 @@ export default function MealDetailPage() {
                         </Button>
                       ) : null}
                     </div>
-                    <div className="p-3">
+                    <div 
+                      className="p-3 cursor-pointer hover:bg-muted/30 transition-colors rounded-b-2xl"
+                      onClick={() => navigate(`/proposals/${proposal.id}`, { state: { mealId: id } })}
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-sm leading-snug">{proposal.dishName}</h3>
                         <Badge variant="secondary" className="h-6 rounded-full px-2 text-xs">
@@ -312,18 +345,6 @@ export default function MealDetailPage() {
               })}
             </div>
           )}
-        </div>
-
-        {/* Propose Button */}
-        <div className="mt-6">
-          <Button
-            size="lg"
-            onClick={() => setShowAddProposal(true)}
-            className="w-full h-12 rounded-xl"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Propose a Dish
-          </Button>
         </div>
 
         {id && (
@@ -358,6 +379,261 @@ export default function MealDetailPage() {
         )}
 
       </PageShell>
+
+      {/* Admin: Edit/Delete Meal */}
+      <AdminOnly>
+        <Dialog open={showAdminMenu} onOpenChange={setShowAdminMenu}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Meal actions</DialogTitle>
+              <DialogClose>
+                <Button variant="ghost" size="icon" aria-label="Close meal actions">
+                  ✕
+                </Button>
+              </DialogClose>
+            </DialogHeader>
+
+            <div className="px-5 pb-5 space-y-3">
+              {mealStatus === 'PLANNING' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  onClick={() => {
+                    setShowAdminMenu(false)
+                    setShowCloseVoting(true)
+                  }}
+                >
+                  <Lock className="h-4 w-4" />
+                  Close voting
+                </Button>
+              ) : null}
+
+              {mealStatus === 'LOCKED' ? (
+                <>
+                  <Button
+                    type="button"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setShowAdminMenu(false)
+                      setShowFinalizeMeal(true)
+                    }}
+                    disabled={proposals.length === 0}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Finalize meal
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      setShowAdminMenu(false)
+                      setShowReopenVoting(true)
+                    }}
+                  >
+                    <Unlock className="h-4 w-4" />
+                    Reopen voting
+                  </Button>
+                </>
+              ) : null}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => {
+                  setShowAdminMenu(false)
+                  setShowEditMeal(true)
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit meal
+              </Button>
+
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full justify-start gap-2"
+                onClick={() => {
+                  setShowAdminMenu(false)
+                  setShowDeleteMeal(true)
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete meal
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <EditMealDialog open={showEditMeal} onOpenChange={setShowEditMeal} meal={meal} />
+
+        <Dialog open={showDeleteMeal} onOpenChange={setShowDeleteMeal}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete meal?</DialogTitle>
+              <DialogClose>
+                <Button variant="ghost" size="icon" aria-label="Close delete dialog">
+                  ✕
+                </Button>
+              </DialogClose>
+            </DialogHeader>
+
+            <div className="px-5 pb-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This permanently deletes the meal and its proposals/votes. This action can’t be undone.
+              </p>
+
+              <Button
+                type="button"
+                variant="destructive"
+                className="w-full"
+                disabled={deleteMealMutation.isPending}
+                onClick={async () => {
+                  if (!id) return
+                  try {
+                    await deleteMealMutation.mutateAsync({ mealId: id })
+                    toast.success('Meal deleted.')
+                    setShowDeleteMeal(false)
+                    navigate('/meals')
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, 'Failed to delete meal.'))
+                  }
+                }}
+              >
+                {deleteMealMutation.isPending ? 'Deleting…' : 'Delete meal'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showCloseVoting} onOpenChange={setShowCloseVoting}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Close voting?</DialogTitle>
+              <DialogClose>
+                <Button variant="ghost" size="icon" aria-label="Close close-voting dialog">
+                  ✕
+                </Button>
+              </DialogClose>
+            </DialogHeader>
+
+            <div className="px-5 pb-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This locks voting for everyone (PLANNING → LOCKED). You can reopen later.
+              </p>
+
+              <Button
+                type="button"
+                className="w-full"
+                disabled={closeVotingMutation.isPending}
+                onClick={async () => {
+                  if (!id) return
+                  try {
+                    await closeVotingMutation.mutateAsync(id)
+                    toast.success('Voting closed.')
+                    setShowCloseVoting(false)
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, 'Failed to close voting.'))
+                  }
+                }}
+              >
+                {closeVotingMutation.isPending ? 'Closing…' : 'Close voting'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showReopenVoting} onOpenChange={setShowReopenVoting}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Reopen voting?</DialogTitle>
+              <DialogClose>
+                <Button variant="ghost" size="icon" aria-label="Close reopen-voting dialog">
+                  ✕
+                </Button>
+              </DialogClose>
+            </DialogHeader>
+
+            <div className="px-5 pb-5 space-y-4">
+              <p className="text-sm text-muted-foreground">This unlocks voting (LOCKED → PLANNING).</p>
+
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                disabled={reopenVotingMutation.isPending}
+                onClick={async () => {
+                  if (!id) return
+                  try {
+                    await reopenVotingMutation.mutateAsync(id)
+                    toast.success('Voting reopened.')
+                    setShowReopenVoting(false)
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, 'Failed to reopen voting.'))
+                  }
+                }}
+              >
+                {reopenVotingMutation.isPending ? 'Reopening…' : 'Reopen voting'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <FinalizeMealDialog
+          open={showFinalizeMeal}
+          onOpenChange={setShowFinalizeMeal}
+          mealId={meal.id}
+          proposals={proposals}
+          members={(family?.members ?? []).map((m) => ({
+            userId: m.userId,
+            name: m.name,
+            username: m.username,
+            avatarId: m.avatarId,
+          }))}
+          finalDecision={summary.finalDecision}
+        />
+      </AdminOnly>
+
+      {/* Footer Actions */}
+      <div className="fixed inset-x-0 bottom-0 z-20">
+        <div className="app-frame pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="rounded-[28px] bg-background/90 backdrop-blur shadow-xl ring-1 ring-black/5 p-4">
+            <div className="flex items-center gap-3">
+              {votingOpen ? (
+                <Button
+                  size="default"
+                  onClick={() => setShowVotingDialog(true)}
+                  className="flex-1 h-10 rounded-2xl px-6"
+                  disabled={proposals.length === 0}
+                >
+                  <Vote className="h-5 w-5 mr-2" />
+                  Vote Now
+                </Button>
+              ) : null}
+
+              <Button
+                type="button"
+                size={votingOpen ? 'icon' : 'default'}
+                variant={votingOpen ? 'secondary' : 'default'}
+                onClick={() => setShowAddProposal(true)}
+                className={
+                  votingOpen
+                    ? 'h-10 w-14 rounded-2xl bg-accent/15 hover:bg-accent/25'
+                    : 'flex-1 h-10 rounded-2xl px-6'
+                }
+                disabled={!canEditProposals}
+                aria-label="Propose a dish"
+              >
+                <Plus className={votingOpen ? 'h-5 w-5' : 'h-5 w-5 mr-2'} />
+                {!votingOpen ? 'Propose a Dish' : null}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

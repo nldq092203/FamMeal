@@ -9,6 +9,7 @@ import {
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 import { families } from './family.table';
 import { mealStatusEnum, mealTypeEnum } from './enums';
+import { users } from './user.table';
 
 /**
  * Meals table — MVP, clean & extensible
@@ -43,10 +44,15 @@ export const meals = pgTable(
 
     // Final decision (single source of truth)
     finalDecision: jsonb('final_decision').$type<{
-      selectedProposalId: string;
+      // New: allow multiple selected dishes; legacy records may still have selectedProposalId
+      selectedProposalIds?: string[];
+      selectedProposalId?: string;
       decidedByUserId: string;
       reason?: string;
     }>(),
+
+    // Execution (who cooks this meal)
+    cookUserId: uuid('cook_user_id').references(() => users.id, { onDelete: 'set null' }),
 
     // Workflow timestamps
     votingClosedAt: timestamp('voting_closed_at'),

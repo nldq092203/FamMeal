@@ -53,6 +53,7 @@ export class MealHistoryService {
         date: meal.scheduledFor,
         mealType: meal.mealType,
         status: meal.status,
+        cookUserId: meal.cookUserId,
         proposalCount: proposalCount.length,
         voteCount: voteCount.length,
         votingClosedAt: meal.votingClosedAt,
@@ -125,6 +126,11 @@ export class MealHistoryService {
 
     // Get final decision if exists
     const finalDecision = meal.finalDecision;
+    const selectedProposalIds = Array.isArray(finalDecision?.selectedProposalIds)
+      ? finalDecision.selectedProposalIds
+      : finalDecision?.selectedProposalId
+        ? [finalDecision.selectedProposalId]
+        : [];
 
     const voteSummary = mealProposals
       .map((p) => {
@@ -149,11 +155,12 @@ export class MealHistoryService {
         constraints: meal.constraints,
         votingClosedAt: meal.votingClosedAt,
         finalizedAt: meal.finalizedAt,
+        cookUserId: meal.cookUserId,
       },
       proposals: mealProposals.map(p => ({
         ...p,
         voteStats: voteStatsByProposalId.get(p.id) ?? { voteCount: 0, averageRank: 0, totalScore: 0 },
-        isSelected: finalDecision?.selectedProposalId === p.id,
+        isSelected: selectedProposalIds.includes(p.id),
       })),
       voteSummary,
       finalDecision,

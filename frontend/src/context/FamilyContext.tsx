@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 import { useFamiliesQuery } from '@/query/hooks/useFamiliesQuery'
@@ -25,12 +24,11 @@ const FamilyContext = createContext<FamilyContextValue | null>(null);
 
 export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
-  const location = useLocation()
   const familyId = useFamilyStore((s) => s.familyId)
   const setFamilyId = useFamilyStore((s) => s.setFamilyId)
 
-  const shouldFetchFamilies = !familyId || location.pathname === '/family-select' || location.pathname.startsWith('/family-select/')
-  const familiesQuery = useFamiliesQuery(shouldFetchFamilies)
+  // Always fetch families list to validate the current familyId
+  const familiesQuery = useFamiliesQuery(true)
   const familyQuery = useFamilyQuery(familyId)
 
   const families = familiesQuery.data ?? EMPTY_FAMILIES

@@ -331,17 +331,18 @@ Response `200`:
 {
   "success": true,
   "data": [
-    {
-      "id": "uuid",
-      "date": "2026-01-20",
-      "mealType": "DINNER",
-      "status": "PLANNING",
-      "proposalCount": 0,
-      "voteCount": 0,
-      "votingClosedAt": null,
-      "finalizedAt": null,
-      "hasFinalDecision": false
-    }
+	    {
+	      "id": "uuid",
+	      "date": "2026-01-20",
+	      "mealType": "DINNER",
+	      "status": "PLANNING",
+	      "cookUserId": "uuid",
+	      "proposalCount": 0,
+	      "voteCount": 0,
+	      "votingClosedAt": null,
+	      "finalizedAt": null,
+	      "hasFinalDecision": false
+	    }
   ]
 }
 ```
@@ -371,10 +372,11 @@ Request body:
 
 Notes:
 - `scheduledFor` accepts either `YYYY-MM-DD` or an ISO timestamp like `2026-01-22T12:00:00Z` (server normalizes to `YYYY-MM-DD`).
+- Requires you to be a family `ADMIN` for the provided `familyId`.
 
 Response `201`:
 ```json
-{ "success": true, "data": { "id": "uuid", "familyId": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING" } }
+{ "success": true, "data": { "id": "uuid", "familyId": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" } }
 ```
 
 ### List meals
@@ -382,7 +384,7 @@ Response `201`:
 
 Response `200`:
 ```json
-{ "success": true, "data": [ { "id": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING" } ] }
+{ "success": true, "data": [ { "id": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" } ] }
 ```
 
 ### Get meal
@@ -390,20 +392,24 @@ Response `200`:
 
 Response `200`:
 ```json
-{ "success": true, "data": { "id": "uuid", "familyId": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING" } }
+{ "success": true, "data": { "id": "uuid", "familyId": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" } }
 ```
 
 ### Update meal
 `PATCH /api/meals/:id`
 
+Notes:
+- Requires you to be a family `ADMIN` for the meal’s family.
+- Status transitions happen via the admin meal endpoints (`/api/admin/meals/...`), not this endpoint.
+
 Request body (any subset):
 ```json
-{ "scheduledFor": "2026-01-21", "mealType": "LUNCH", "status": "LOCKED", "constraints": { "maxBudget": 30 } }
+{ "scheduledFor": "2026-01-21", "mealType": "LUNCH", "constraints": { "maxBudget": 30 } }
 ```
 
 Response `200`:
 ```json
-{ "success": true, "data": { "id": "uuid", "status": "LOCKED" } }
+{ "success": true, "data": { "id": "uuid", "status": "LOCKED", "cookUserId": "uuid" } }
 ```
 
 ### Delete meal (soft delete)
@@ -419,7 +425,7 @@ Response `200` (shape):
 {
   "success": true,
   "data": {
-    "meal": { "id": "uuid", "date": "2026-01-20", "mealType": "DINNER", "status": "PLANNING" },
+    "meal": { "id": "uuid", "date": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" },
     "proposals": [
       {
         "id": "uuid",
@@ -435,6 +441,35 @@ Response `200` (shape):
   }
 }
 ```
+
+### Get my votes for a meal
+`GET /api/meals/:id/votes/my-votes`
+
+Response `200`:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "voteId": "uuid",
+      "proposalId": "uuid",
+      "dishName": "Pho",
+      "rankPosition": 1
+    },
+    {
+      "voteId": "uuid",
+      "proposalId": "uuid",
+      "dishName": "Spring Rolls",
+      "rankPosition": 2
+    }
+  ]
+}
+```
+
+Notes:
+- Returns all votes the authenticated user has cast for proposals in the specified meal
+- Results are ordered by rank position (ascending)
+- Returns empty array if user hasn't voted yet
 
 ---
 
@@ -509,6 +544,39 @@ Response `200`:
 { "success": true, "data": { "id": "uuid", "proposalId": "uuid", "userId": "uuid", "rankPosition": 1 } }
 ```
 
+### Bulk vote for a meal (submit all rankings at once)
+`POST /api/meals/:id/votes/bulk`
+
+Request body:
+```json
+{
+  "votes": [
+    { "proposalId": "uuid-1", "rankPosition": 1 },
+    { "proposalId": "uuid-2", "rankPosition": 2 },
+    { "proposalId": "uuid-3", "rankPosition": 3 }
+  ]
+}
+```
+
+Response `200`:
+```json
+{
+  "success": true,
+  "data": [
+    { "id": "vote-uuid-1", "proposalId": "uuid-1", "userId": "uuid", "rankPosition": 1 },
+    { "id": "vote-uuid-2", "proposalId": "uuid-2", "userId": "uuid", "rankPosition": 2 },
+    { "id": "vote-uuid-3", "proposalId": "uuid-3", "userId": "uuid", "rankPosition": 3 }
+  ]
+}
+```
+
+Notes:
+- Replaces all existing votes for the user in this meal with the new votes
+- All proposals must belong to the specified meal
+- Each rank position must be unique (no duplicates)
+- Meal must be in `PLANNING` status
+- At least one vote is required
+
 ### Delete vote
 `DELETE /api/votes/:id`
 
@@ -578,10 +646,10 @@ Response `200`:
 
 Request body:
 ```json
-{ "selectedProposalId": "uuid", "reason": "Most votes" }
+{ "selectedProposalIds": ["uuid-1", "uuid-2"], "cookUserId": "uuid", "reason": "Most votes" }
 ```
 
 Response `200`:
 ```json
-{ "success": true, "data": { "id": "uuid", "status": "COMPLETED", "finalizedAt": "...", "finalDecision": { "selectedProposalId": "uuid", "decidedByUserId": "uuid" } } }
+{ "success": true, "data": { "id": "uuid", "status": "COMPLETED", "finalizedAt": "...", "cookUserId": "uuid", "finalDecision": { "selectedProposalIds": ["uuid-1", "uuid-2"], "decidedByUserId": "uuid" } } }
 ```

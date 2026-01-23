@@ -12,9 +12,12 @@ import RegisterPage from '@/pages/Auth/RegisterPage'
 import FamilySelectPage from '@/pages/FamilySelect/FamilySelectPage'
 import MealsPage from '@/pages/Meals/MealsPage'
 import MealDetailPage from '@/pages/Meals/MealDetailPage'
+import ProposalDetailPage from '@/pages/Proposals/ProposalDetailPage'
 import HistoryPage from '@/pages/History/HistoryPage'
 import FamilyPage from '@/pages/Family/FamilyPage'
 import SettingsPage from '@/pages/Settings/SettingsPage'
+import EditProfilePage from '@/pages/Settings/EditProfilePage'
+import ChangePasswordPage from '@/pages/Settings/ChangePasswordPage'
 
 function App() {
   return (
@@ -50,16 +53,19 @@ function App() {
             >
               <Route path="/family-select" element={<FamilySelectPage />} />
               
-              {/* Meal detail page without bottom nav */}
+              {/* Detail pages without bottom nav */}
               <Route path="/meals/:id" element={<MealDetailPage />} />
+              <Route path="/proposals/:id" element={<ProposalDetailPage />} />
               
               {/* Main app with tab navigation */}
               <Route element={<Layout />}>
                 <Route path="/" element={<Navigate to="/meals" replace />} />
                 <Route path="/meals" element={<MealsPage />} />
-                <Route path="/history" element={<HistoryPage />} />
-                <Route path="/family" element={<FamilyPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/family" element={<FamilyPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings/edit-profile" element={<EditProfilePage />} />
+              <Route path="/settings/change-password" element={<ChangePasswordPage />} />
               </Route>
             </Route>
           </Routes>

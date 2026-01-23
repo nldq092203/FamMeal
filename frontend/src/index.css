@@ -594,7 +594,7 @@ body {
 /* Desktop (1024px and up) */
 @media (min-width: 1024px) {
   :root {
-    --app-max-width: 960px;
+    --app-max-width: 1200px;
   }
 
   .container {
@@ -669,6 +669,13 @@ body {
 
   .vote-summary {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Wide desktop (1280px and up) */
+@media (min-width: 1280px) {
+  :root {
+    --app-max-width: 1280px;
   }
 }
 
