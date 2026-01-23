@@ -3,14 +3,12 @@ module.exports.config = { runtime: 'nodejs' };
 const path = require('node:path');
 const moduleAlias = require('module-alias');
 
-// dist is copied to api/_dist at build time
-const distDir = path.join(__dirname, '_dist');
+// Make "@/..." resolve to the compiled output
+// Because compiled files are in backend/dist/config, backend/dist/modules, ...
+moduleAlias.addAlias('@', path.join(__dirname, '..', 'dist'));
 
-// Make "@/..." resolve inside the bundled output
-moduleAlias.addAlias('@', distDir);
-
-// IMPORTANT: buildApp is in _dist/src/app.js (because source is src/app.ts)
-const { buildApp } = require('./_dist/src/app.js');
+// Static require so Vercel bundles it correctly
+const { buildApp } = require('../dist/src/app.js');
 
 let appPromise;
 let readyPromise;
@@ -27,30 +25,34 @@ async function getApp() {
   return app;
 }
 
-// Handle Vercel catch-all that comes as ?path=...
-function normalizeVercelCatchAllUrl(req) {
+function stripVercelPathParam(req) {
   if (typeof req.url !== 'string') return;
 
   const u = new URL(req.url, 'http://local');
-  const p = u.searchParams.get('path');
-  if (!p) return;
+  if (!u.searchParams.has('path')) return;
 
-  // Remove the special param
+  // Vercel sometimes appends ?path=...
   u.searchParams.delete('path');
   const rest = u.searchParams.toString();
-
-  // If pathname is "/" then the real path is inside ?path=
-  let finalPath = u.pathname;
-  if (finalPath === '/' || finalPath === '') {
-    finalPath = '/' + p.replace(/^\/+/, '');
-  }
-
-  req.url = rest ? `${finalPath}?${rest}` : finalPath;
+  req.url = rest ? `${u.pathname}?${rest}` : u.pathname;
 }
 
 module.exports = async function handler(req, res) {
-  normalizeVercelCatchAllUrl(req);
+  try {
+    stripVercelPathParam(req);
 
-  const app = await getApp();
-  app.server.emit('request', req, res);
+    const app = await getApp();
+    app.server.emit('request', req, res);
+  } catch (err) {
+    // IMPORTANT: return something so it doesn't become FUNCTION_INVOCATION_FAILED
+    console.error('Handler crash:', err);
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json');
+    res.end(
+      JSON.stringify({
+        success: false,
+        error: { message: String(err), code: 'HANDLER_CRASH' },
+      })
+    );
+  }
 };
