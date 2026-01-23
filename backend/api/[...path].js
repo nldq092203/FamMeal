@@ -1,7 +1,7 @@
 // Vercel serverless entrypoint for the Fastify app.
 //
 // NOTE: Vercel's runtime does not honor TypeScript path aliases like "@/*".
-// We load the compiled output from `dist/` where `tsc-alias` has rewritten imports.
+// We register a runtime alias for "@/*" so imports work inside the bundled function output.
 
 module.exports.config = {
   runtime: 'nodejs',
@@ -18,20 +18,18 @@ async function getApp() {
     const moduleAlias = require('module-alias');
 
     const rootDir = path.join(__dirname, '..');
-    const distDir = path.join(rootDir, 'dist');
     const srcDir = path.join(rootDir, 'src');
 
-    // Register runtime alias so "@/..." works even if build output isn't rewritten.
-    // Prefer dist/ if it exists; otherwise fall back to src/.
-    const aliasTarget = fs.existsSync(distDir) ? distDir : srcDir;
-    moduleAlias.addAlias('@', aliasTarget);
-
-    const distApp = path.join(distDir, 'app.js');
     const srcApp = path.join(srcDir, 'app.js');
+    // Register runtime alias so "@/..." resolves to bundled src output.
+    moduleAlias.addAlias('@', srcDir);
 
-    // Prefer compiled output; fall back to src/app.js if Vercel transpiled TS into src/.
+    if (!fs.existsSync(srcApp)) {
+      throw new Error(`Expected ${srcApp} to exist in the Vercel function bundle`);
+    }
+
     // eslint-disable-next-line global-require, import/no-dynamic-require
-    const { buildApp } = require(fs.existsSync(distApp) ? distApp : srcApp);
+    const { buildApp } = require(srcApp);
     appPromise = buildApp();
   }
 
