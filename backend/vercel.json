@@ -1,8 +1,15 @@
 {
   "version": 2,
+  "buildCommand": "npm run vercel-build",
   "rewrites": [
-    { "source": "/", "destination": "/api/health" },
-    { "source": "/((?!api/).*)", "destination": "/api/$1" }
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/api/:path*"
+    }
   ],
   "crons": []
 }
