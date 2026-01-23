@@ -46,6 +46,11 @@ Migration: `drizzle/0010_add_notifications_tables.sql`
 - Index: `(status, scheduled_at)` for scanning the pending queue
 - `status`: `PENDING` → `DONE` (or `CANCELED`)
 
+### `cron_state`
+
+- Tracks last successful cron window per job (`job_name`, `last_run_at`)
+- Migration: `drizzle/0011_add_cron_state.sql`
+
 ## Types
 
 Defined in `src/shared/notifications.ts`.
@@ -119,7 +124,14 @@ Vercel production note:
 - Cron endpoints (public, but limited to Vercel cron header or `CRON_SECRET`):
   - `GET /api/cron/notifications/tick`
   - `GET /api/cron/notifications/cleanup`
-- `vercel.json` configures schedules (every minute + daily 03:00 UTC).
+- `vercel.json` configures schedules (**hourly** + daily 03:00 UTC).
+
+Hourly “due-window” processing:
+
+- A single run takes a DB lock (advisory lock) so only one instance works
+- Reads `cron_state.last_run_at` for `send_notifications`
+- Processes `scheduled_notifications` with `scheduled_at > last_run_at AND scheduled_at <= now`
+- Updates `last_run_at = now`
 
 `index.ts`
 

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { env } from '@/config/env.js';
 import { ForbiddenError } from '@/shared/errors.js';
-import { runNotificationCleanupJob, runNotificationSchedulerTick } from '@/modules/notifications/notification.jobs.js';
+import { runNotificationCleanupJob, runNotificationSchedulerWindowedJob } from '@/modules/notifications/notification.jobs.js';
 
 export async function notificationCronRoutes(app: FastifyInstance) {
   const secretQuery = z.object({
@@ -25,7 +25,7 @@ export async function notificationCronRoutes(app: FastifyInstance) {
   // GET /api/cron/notifications/tick
   app.get('/tick', async (request, reply) => {
     const parsed = assertCronAuthorized(request);
-    const result = await runNotificationSchedulerTick({ limit: parsed.limit ?? 100 });
+    const result = await runNotificationSchedulerWindowedJob({ limit: parsed.limit ?? 500 });
     return reply.send(result);
   });
 
@@ -36,4 +36,3 @@ export async function notificationCronRoutes(app: FastifyInstance) {
     return reply.send(result);
   });
 }
-

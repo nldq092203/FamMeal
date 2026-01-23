@@ -1,6 +1,6 @@
 import cron, { type ScheduledTask } from 'node-cron';
 import { logger } from '@/shared/logger.js';
-import { runNotificationCleanupJob, runNotificationSchedulerTick } from '@/modules/notifications/notification.jobs.js';
+import { runNotificationCleanupJob, runNotificationSchedulerWindowedJob } from '@/modules/notifications/notification.jobs.js';
 
 export type SchedulerHandle = {
   stop: () => void;
@@ -20,7 +20,7 @@ export function startNotificationScheduler(): SchedulerHandle {
     logger.info({ startedAt: startedAt.toISOString() }, 'notification-scheduler: tick start');
 
     try {
-      await runNotificationSchedulerTick({ limit: 100, now: new Date() });
+      await runNotificationSchedulerWindowedJob({ limit: 500, now: new Date() });
     } finally {
       const endedAt = new Date();
       logger.info(
@@ -31,9 +31,9 @@ export function startNotificationScheduler(): SchedulerHandle {
     }
   };
 
-  // Every minute, UTC only
+  // Hourly, UTC only
   const task: ScheduledTask = cron.schedule(
-    '* * * * *',
+    '0 * * * *',
     () => {
       void runOnce();
     },

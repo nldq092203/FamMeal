@@ -10,6 +10,7 @@ import * as proposalSchema from '@/db/schema/proposal.table.js';
 import * as voteSchema from '@/db/schema/vote.table.js';
 import * as notificationSchema from '@/db/schema/notification.table.js';
 import * as scheduledNotificationSchema from '@/db/schema/scheduled-notification.table.js';
+import * as cronStateSchema from '@/db/schema/cron-state.table.js';
 
 const schema = {
   ...enums,
@@ -21,6 +22,7 @@ const schema = {
   ...voteSchema,
   ...notificationSchema,
   ...scheduledNotificationSchema,
+  ...cronStateSchema,
 };
 /**
  * PostgreSQL connection instance
