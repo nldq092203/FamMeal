@@ -1,4 +1,5 @@
 import cron, { type ScheduledTask } from 'node-cron';
+import { env } from '@/config/env.js';
 import { logger } from '@/shared/logger.js';
 import { runNotificationCleanupJob, runNotificationSchedulerWindowedJob } from '@/modules/notifications/notification.jobs.js';
 
@@ -7,6 +8,12 @@ export type SchedulerHandle = {
 };
 
 export function startNotificationScheduler(): SchedulerHandle {
+  // Deactivated by default (use Vercel Cron or explicit enablement).
+  if (!env.CRON_ENABLED) {
+    logger.warn('notification-scheduler: CRON_ENABLED=false, not starting any scheduled tasks');
+    return { stop: () => {} };
+  }
+
   let running = false;
 
   const runOnce = async (): Promise<void> => {

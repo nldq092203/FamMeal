@@ -143,7 +143,10 @@ export const buildApp = async (): Promise<FastifyInstance> => {
    */
   // Public routes
   await app.register(authRoutes, { prefix: '/api/auth' });
-  await app.register(notificationCronRoutes, { prefix: '/api/cron/notifications' });
+  // Cron routes are disabled by default (Hobby-safe / explicit opt-in)
+  if (env.CRON_ENABLED) {
+    await app.register(notificationCronRoutes, { prefix: '/api/cron/notifications' });
+  }
 
   // Protected routes (require authentication)
   await app.register(async (protectedApp) => {
