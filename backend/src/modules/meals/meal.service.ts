@@ -134,7 +134,10 @@ export class MealService {
    * Delete a meal
    */
   async deleteMeal(id: string, userId: string): Promise<void> {
-    await this.getMealById(id, userId);
+    const meal = await this.getMealById(id, userId);
+
+    // Only family ADMIN can delete meals
+    await checkFamilyRole(userId, meal.familyId, 'ADMIN');
 
     // Soft delete
     await db

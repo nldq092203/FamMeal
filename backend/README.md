@@ -86,7 +86,7 @@ Set `REDIS_URL` to enable shared caching (recommended for production).
 - `REDIS_URL`: Redis connection URL (use `rediss://` for TLS providers)
 - `CACHE_DEFAULT_TTL_SECONDS`: default TTL for cached items (seconds)
 
-## 🪵 Logging (loguru-like)
+## 🪵 Logging
 
 Use `src/shared/logger.ts` for structured logs across the codebase:
 

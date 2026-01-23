@@ -81,26 +81,31 @@ export default function MealsPage() {
   const [showCreateMeal, setShowCreateMeal] = useState(false)
   const [showLimit, setShowLimit] = useState(10)
   
-  // Default: Always fetch 1 week from today (one time fetch)
+  // Default: Always fetch 1 week centered on today (3 days before, today, 3 days after)
   const defaultWeekRange = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    
+    const start = new Date(today)
+    start.setDate(today.getDate() - 3) // 3 days before today
+    start.setHours(0, 0, 0, 0)
+    
     const end = new Date(today)
-    end.setDate(today.getDate() + 6) // 7 days total (today + 6 more)
+    end.setDate(today.getDate() + 3) // 3 days after today
     end.setHours(23, 59, 59, 999)
-    return { start: today, end }
+    
+    return { start, end }
   }, [])
 
   // Selected days for filtering (set of date strings)
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set())
   
-  // Current week start date for the calendar
+  // Current week start date for the calendar (3 days before today)
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const diff = today.getDate() - today.getDay() // Sunday-start
     const weekStart = new Date(today)
-    weekStart.setDate(diff)
+    weekStart.setDate(today.getDate() - 3) // Start 3 days before today
     return weekStart
   })
 

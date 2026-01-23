@@ -21,6 +21,10 @@ export function WeeklyCalendar({ weekStart, selectedDays, onDayToggle, onWeekCha
 
   const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
+  const getDayName = (date: Date) => {
+    return dayNames[date.getDay()]
+  }
+
   const isToday = (date: Date) => {
     const today = new Date()
     return date.toDateString() === today.toDateString()
@@ -45,9 +49,8 @@ export function WeeklyCalendar({ weekStart, selectedDays, onDayToggle, onWeekCha
   const handleToday = () => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const diff = today.getDate() - today.getDay() // Sunday-start
     const weekStart = new Date(today)
-    weekStart.setDate(diff)
+    weekStart.setDate(today.getDate() - 3) // Start 3 days before today
     onWeekChange(weekStart)
   }
 
@@ -118,7 +121,7 @@ export function WeeklyCalendar({ weekStart, selectedDays, onDayToggle, onWeekCha
                 type="button"
                 aria-label={`Select ${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               >
-                <span className="text-xs font-semibold mb-1">{dayNames[index]}</span>
+                <span className="text-xs font-semibold mb-1">{getDayName(date)}</span>
                 <span className="text-lg font-bold leading-none">{date.getDate()}</span>
               </button>
             )

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { MealController } from './meal.controller';
-import { createMealSchema, updateMealSchema, listMealsQuerySchema } from './meal.schema';
+import { listMealsQuerySchema } from './meal.schema';
 import { MealHistoryController } from './meal-history.controller';
 import { VoteController } from '../votes/vote.controller';
 import { bulkVoteSchema } from '../votes/vote.schema';
@@ -11,17 +11,6 @@ export async function mealRoutes(app: FastifyInstance) {
   const historyController = new MealHistoryController();
   const voteController = new VoteController();
   const idParamSchema = z.object({ id: z.string().uuid() });
-
-  // Create new meal
-  app.post(
-    '/',
-    {
-      preValidation: async (request) => {
-        request.body = createMealSchema.parse(request.body);
-      },
-    },
-    controller.createMeal.bind(controller)
-  );
 
   // List meals
   app.get(
@@ -77,28 +66,5 @@ export async function mealRoutes(app: FastifyInstance) {
       },
     },
     voteController.getUserVotesForMeal.bind(voteController)
-  );
-
-  // Update meal
-  app.patch(
-    '/:id',
-    {
-      preValidation: async (request) => {
-        request.params = idParamSchema.parse(request.params);
-        request.body = updateMealSchema.parse(request.body);
-      },
-    },
-    controller.updateMeal.bind(controller)
-  );
-
-  // Delete meal
-  app.delete(
-    '/:id',
-    {
-      preValidation: async (request) => {
-        request.params = idParamSchema.parse(request.params);
-      },
-    },
-    controller.deleteMeal.bind(controller)
   );
 }

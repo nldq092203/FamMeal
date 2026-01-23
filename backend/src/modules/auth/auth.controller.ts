@@ -70,7 +70,6 @@ export class AuthController {
     request: FastifyRequest,
     reply: FastifyReply
   ): Promise<void> {
-    // User is attached by auth middleware
     const user = request.user;
 
     if (!user) {
