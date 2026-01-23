@@ -24,4 +24,10 @@ export const queryKeys = {
     all: ['mealVotes'] as const,
     myByMealId: (mealId: string) => [...queryKeys.mealVotes.all, 'myByMealId', mealId] as const,
   },
+  notifications: {
+    all: ['notifications'] as const,
+    list: (familyId: string, params: { limit: number }) =>
+      [...queryKeys.notifications.all, 'list', familyId, params] as const,
+    unreadCount: (familyId: string) => [...queryKeys.notifications.all, 'unreadCount', familyId] as const,
+  },
 } as const

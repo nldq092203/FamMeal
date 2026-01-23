@@ -58,7 +58,7 @@ const AdminFinalizationPage: React.FC = () => {
 
   useEffect(() => {
     if (!mealSummary) return;
-    const initial = mealSummary.finalDecision?.selectedProposalId ?? mealSummary.voteSummary[0]?.proposalId ?? '';
+    const initial = mealSummary.finalDecision?.selectedProposalIds?.[0] ?? mealSummary.voteSummary[0]?.proposalId ?? '';
     if (!initial) return;
     setSelectedWinner((prev) => prev || initial);
   }, [mealSummary]);
@@ -105,7 +105,7 @@ const AdminFinalizationPage: React.FC = () => {
     try {
       await finalizeMeal.mutateAsync({
         mealId,
-        selectedProposalId: selectedWinner,
+        selectedProposalIds: [selectedWinner],
         cookUserId,
         reason: reason || undefined,
       });

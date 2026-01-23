@@ -12,7 +12,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:cleanup": "tsx --tsconfig tsconfig.json src/__tests__/cleanup-test-data.ts",
+    "worker:notification-scheduler": "tsx --tsconfig tsconfig.json workers/notification-scheduler/index.ts"
   },
   "keywords": [
     "meal-planning",
@@ -31,6 +33,7 @@
     "drizzle-orm": "^0.45.1",
     "fastify": "^5.2.0",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.2.1",
     "pino-pretty": "^13.1.3",
     "postgres": "^3.4.5",
     "zod": "^3.24.1",
@@ -42,11 +45,13 @@
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.19.1",
-    "drizzle-kit": "^0.31.8",
+    "@vitest/ui": "^4.0.18",
+    "drizzle-kit": "^0.18.1",
     "eslint": "^9.18.0",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=20.0.0"

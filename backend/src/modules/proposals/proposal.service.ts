@@ -5,48 +5,72 @@ import { meals } from '@/db/schema/meal.table';
 import { familyMembers } from '@/db/schema/family-member.table';
 import { CreateProposalInput, UpdateProposalInput } from './proposal.schema';
 import { NotFoundError, ForbiddenError } from '@/shared/errors';
+import { NotificationService } from '@/modules/notifications/notification.service';
+import { NotificationType } from '@/shared/notifications';
 
 export class ProposalService {
   /**
    * Create a new proposal for a meal
    */
   async createProposal(userId: string, mealId: string, data: CreateProposalInput): Promise<Proposal> {
-    // 1. Get meal to check family access
-    const [meal] = await db
-      .select()
-      .from(meals)
-      .where(eq(meals.id, mealId));
+    return await db.transaction(async (tx) => {
+      // 1. Get meal to check family access
+      const [meal] = await tx
+        .select()
+        .from(meals)
+        .where(eq(meals.id, mealId));
 
-    if (!meal) {
-      throw new NotFoundError('Meal not found');
-    }
+      if (!meal) {
+        throw new NotFoundError('Meal not found');
+      }
 
-    // 2. Check family membership
-    await this.checkFamilyMembership(meal.familyId, userId);
+      // 2. Check family membership
+      await this.checkFamilyMembership(meal.familyId, userId, tx);
 
-    // 3. Check if meal is still in PLANNING phase
-    if (meal.status !== 'PLANNING') {
-      throw new ForbiddenError('Cannot submit proposals for locked or completed meals');
-    }
+      // 3. Check if meal is still in PLANNING phase
+      if (meal.status !== 'PLANNING') {
+        throw new ForbiddenError('Cannot submit proposals for locked or completed meals');
+      }
 
-    // 4. Create proposal
-    const [newProposal] = await db
-      .insert(proposals)
-      .values({
-        mealId,
-        userId,
-        dishName: data.dishName,
-        ingredients: data.ingredients,
-        notes: data.notes,
-        extra: data.extra || { imageUrls: [] },
-      })
-      .returning();
+      // 4. Create proposal
+      const [newProposal] = await tx
+        .insert(proposals)
+        .values({
+          mealId,
+          userId,
+          dishName: data.dishName,
+          ingredients: data.ingredients,
+          notes: data.notes,
+          extra: data.extra || { imageUrls: [] },
+        })
+        .returning();
 
-    if (!newProposal) {
-      throw new Error('Failed to create proposal');
-    }
+      if (!newProposal) {
+        throw new Error('Failed to create proposal');
+      }
 
-    return newProposal;
+      // 5. Fan out MEAL_PROPOSAL notifications to all family members except the author
+      const members = await tx
+        .select({ userId: familyMembers.userId })
+        .from(familyMembers)
+        .where(eq(familyMembers.familyId, meal.familyId));
+
+      const recipients = members
+        .map((m) => m.userId)
+        .filter((id) => id !== userId);
+
+      if (recipients.length) {
+        const notificationService = new NotificationService(tx as unknown as typeof db);
+        await notificationService.createForUsers({
+          users: recipients,
+          familyId: meal.familyId,
+          type: NotificationType.MEAL_PROPOSAL,
+          refId: newProposal.id,
+        });
+      }
+
+      return newProposal;
+    });
   }
 
   /**
@@ -173,8 +197,12 @@ export class ProposalService {
   /**
    * Helper: Check if user is a member of the family
    */
-  private async checkFamilyMembership(familyId: string, userId: string): Promise<void> {
-    const [membership] = await db
+  private async checkFamilyMembership(
+    familyId: string,
+    userId: string,
+    client: Pick<typeof db, 'select'> = db
+  ): Promise<void> {
+    const [membership] = await client
       .select()
       .from(familyMembers)
       .where(and(

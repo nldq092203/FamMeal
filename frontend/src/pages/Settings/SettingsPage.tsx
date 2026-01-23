@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, LogOut, Pencil, Lock, Bell, UtensilsCrossed, ArrowLeft, Eye, EyeOff, Save } from 'lucide-react'
+import { ChevronRight, LogOut, Pencil, Lock, Bell, UtensilsCrossed, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 import { getAvatarSrc } from '@/assets/avatars'
 import type { AvatarId } from '@/assets/avatars'
 import { AvatarPickerCompact } from '@/components/AvatarPickerCompact'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,14 +15,17 @@ import { useFamily } from '@/context/FamilyContext'
 import { useToast } from '@/context/ToastContext'
 import { userService } from '@/api/user.service'
 import { getApiErrorMessage } from '@/api/error'
+import { useUnreadNotificationsCountQuery } from '@/query/hooks/useUnreadNotificationsCountQuery'
 
 type EditSection = null | 'profile' | 'password'
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate()
   const { user, logout, refreshUser } = useAuth()
-  const { family, role, families } = useFamily()
+  const { family, role, families, familyId } = useFamily()
   const toast = useToast()
+  const unreadCountQuery = useUnreadNotificationsCountQuery(familyId)
+  const unreadCount = unreadCountQuery.data ?? 0
   
   const [editSection, setEditSection] = useState<EditSection>(null)
   
@@ -277,6 +281,9 @@ const SettingsPage: React.FC = () => {
                             <Bell className="h-5 w-5 text-primary" />
                           </div>
                           <span className="flex-1 text-left font-medium">Notifications</span>
+                          {unreadCount > 0 ? (
+                            <Badge variant="destructive">{unreadCount > 99 ? '99+' : unreadCount}</Badge>
+                          ) : null}
                           <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                         </button>
                         <div className="h-px bg-border mx-4" />

@@ -1,12 +1,17 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, MoreVertical, Clock, DollarSign, Star, Crown, Medal } from 'lucide-react'
+import { ArrowLeft, MoreVertical, Trash2, Clock, DollarSign, Star, Crown, Medal } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useMealSummaryQuery } from '@/query/hooks/useMealSummaryQuery'
 import { useMyMealVotesQuery } from '@/query/hooks/useMyMealVotesQuery'
+import { useDeleteProposalMutation } from '@/query/hooks/useDeleteProposalMutation'
+import { useProposalQuery } from '@/query/hooks/useProposalQuery'
 import { useAuth } from '@/context/AuthContext'
+import { useToast } from '@/context/ToastContext'
 import { useState } from 'react'
 import { getAvatarSrc } from '@/assets/avatars'
+import { getApiErrorMessage } from '@/api/error'
 import { RankProposalsDialog } from '@/pages/Meals/components/RankProposalsDialog'
 
 export default function ProposalDetailPage() {
@@ -14,14 +19,20 @@ export default function ProposalDetailPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
+  const toast = useToast()
   const [showVotingDialog, setShowVotingDialog] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   // Get mealId from navigation state
-  const mealId = location.state?.mealId as string | undefined
+  const mealIdFromState = location.state?.mealId as string | undefined
+
+  const proposalQuery = useProposalQuery(mealIdFromState ? null : (id ?? null))
+  const mealId = mealIdFromState ?? proposalQuery.data?.mealId ?? null
 
   // Fetch meal summary to get proposal data
-  const mealSummaryQuery = useMealSummaryQuery(mealId || null)
-  const myVotesQuery = useMyMealVotesQuery(mealId || null, Boolean(mealId))
+  const mealSummaryQuery = useMealSummaryQuery(mealId)
+  const myVotesQuery = useMyMealVotesQuery(mealId, Boolean(mealId))
+  const deleteProposalMutation = useDeleteProposalMutation()
   
   const proposals = mealSummaryQuery.data?.proposals
   const proposal = proposals?.find((p) => p.id === id) ?? null
@@ -43,13 +54,29 @@ export default function ProposalDetailPage() {
     ? `${meal.constraints.maxBudget}` 
     : null
 
-  if (mealSummaryQuery.isLoading || !proposal) {
+  if (!mealId || proposalQuery.isLoading || mealSummaryQuery.isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse space-y-4 max-w-md w-full px-4">
           <div className="h-12 bg-muted rounded" />
           <div className="aspect-[4/3] bg-muted rounded" />
           <div className="h-24 bg-muted rounded" />
+        </div>
+      </div>
+    )
+  }
+
+  if (proposalQuery.error || mealSummaryQuery.error || !proposal) {
+    const message = getApiErrorMessage(proposalQuery.error ?? mealSummaryQuery.error, 'Failed to load proposal.')
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full space-y-4">
+          <div className="text-center text-muted-foreground">{message}</div>
+          <div className="flex justify-center">
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Go back
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -83,6 +110,26 @@ export default function ProposalDetailPage() {
     `${mealDate.toLocaleDateString('en-US', { weekday: 'long' })} ${meal.mealType.charAt(0) + meal.mealType.slice(1).toLowerCase()}` : 
     'Meal'
 
+  const handleDelete = async () => {
+    if (!id) {
+      toast.error('Missing proposal id.')
+      return
+    }
+    if (!mealId) {
+      toast.error('Missing meal id.')
+      return
+    }
+
+    try {
+      await deleteProposalMutation.mutateAsync({ proposalId: id, mealId })
+      setIsDeleteOpen(false)
+      toast.success('Proposal deleted.')
+      navigate(`/meals/${mealId}`)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to delete proposal.'))
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background pb-8">
       {/* Header */}
@@ -95,9 +142,21 @@ export default function ProposalDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h2 className="flex-1 px-2 text-center font-semibold text-lg truncate">{proposal.dishName}</h2>
-          <button className="p-2 -mr-2 hover:bg-muted rounded-full transition-colors">
-            <MoreVertical className="h-5 w-5" />
-          </button>
+          {isOwner ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsDeleteOpen(true)}
+              aria-label="Delete proposal"
+              disabled={deleteProposalMutation.isPending}
+            >
+              <Trash2 className="h-5 w-5" />
+            </Button>
+          ) : (
+            <button className="p-2 -mr-2 hover:bg-muted rounded-full transition-colors" aria-label="More actions">
+              <MoreVertical className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -422,7 +481,7 @@ export default function ProposalDetailPage() {
       </div>
 
       {/* Voting Dialog */}
-      {mealId && (
+      {mealId ? (
         <RankProposalsDialog
           open={showVotingDialog}
           onOpenChange={setShowVotingDialog}
@@ -430,7 +489,28 @@ export default function ProposalDetailPage() {
           mealTitle={mealTitle}
           proposals={allProposals}
         />
-      )}
+      ) : null}
+
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete proposal?</DialogTitle>
+          </DialogHeader>
+          <div className="px-5 pb-5 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This permanently deletes your proposal. This action can’t be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={deleteProposalMutation.isPending}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleteProposalMutation.isPending}>
+                {deleteProposalMutation.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

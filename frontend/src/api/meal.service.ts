@@ -104,6 +104,11 @@ export const mealService = {
     return unwrapApiResponse(response.data);
   },
 
+  async getProposal(id: string): Promise<Proposal> {
+    const response = await apiClient.get<ApiResponse<Proposal>>(`/proposals/${id}`);
+    return unwrapApiResponse(response.data);
+  },
+
   async deleteProposal(id: string): Promise<void> {
     await apiClient.delete(`/proposals/${id}`);
   },

@@ -12,6 +12,7 @@ import { mealRoutes } from '@/modules/meals/meal.routes.js';
 import { proposalRoutes, directProposalRoutes } from '@/modules/proposals/proposal.routes.js';
 import { voteRoutes, directVoteRoutes } from '@/modules/votes/vote.routes.js';
 import { authRoutes } from '@/modules/auth/auth.routes.js';
+import { notificationRoutes } from '@/modules/notifications/notification.routes.js';
 import { ZodError } from 'zod';
 import { AppError } from '@/shared/errors.js';
 
@@ -148,6 +149,7 @@ export const buildApp = async (): Promise<FastifyInstance> => {
 
     await protectedApp.register(userRoutes, { prefix: '/api/users' });
     await protectedApp.register(familyRoutes, { prefix: '/api/families' });
+    await protectedApp.register(notificationRoutes, { prefix: '/api/families' });
     await protectedApp.register(mealRoutes, { prefix: '/api/meals' });
     await protectedApp.register(proposalRoutes, { prefix: '/api/meals' });
     await protectedApp.register(directProposalRoutes, { prefix: '/api/proposals' });

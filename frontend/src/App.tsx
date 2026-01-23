@@ -18,6 +18,7 @@ import FamilyPage from '@/pages/Family/FamilyPage'
 import SettingsPage from '@/pages/Settings/SettingsPage'
 import EditProfilePage from '@/pages/Settings/EditProfilePage'
 import ChangePasswordPage from '@/pages/Settings/ChangePasswordPage'
+import SettingsNotificationsPage from '@/pages/Settings/NotificationsPage'
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/settings/edit-profile" element={<EditProfilePage />} />
               <Route path="/settings/change-password" element={<ChangePasswordPage />} />
+              <Route path="/settings/notifications" element={<SettingsNotificationsPage />} />
               </Route>
             </Route>
           </Routes>

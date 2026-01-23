@@ -8,6 +8,8 @@ import * as familyMemberSchema from '@/db/schema/family-member.table.js';
 import * as mealSchema from '@/db/schema/meal.table.js';
 import * as proposalSchema from '@/db/schema/proposal.table.js';
 import * as voteSchema from '@/db/schema/vote.table.js';
+import * as notificationSchema from '@/db/schema/notification.table.js';
+import * as scheduledNotificationSchema from '@/db/schema/scheduled-notification.table.js';
 
 const schema = {
   ...enums,
@@ -17,6 +19,8 @@ const schema = {
   ...mealSchema,
   ...proposalSchema,
   ...voteSchema,
+  ...notificationSchema,
+  ...scheduledNotificationSchema,
 };
 /**
  * PostgreSQL connection instance

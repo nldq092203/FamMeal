@@ -256,6 +256,31 @@ export interface RefreshTokenResponse {
   refreshToken: string;
 }
 
+// Notifications
+export type NotificationTypeId = 1 | 2 | 3 | 4 | 5;
+
+export interface FamilyNotification {
+  id: string;
+  type: NotificationTypeId;
+  refId: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface NotificationsListResponse {
+  items: FamilyNotification[];
+  nextCursor: string | null;
+}
+
+export interface UnreadNotificationsCountResponse {
+  count: number;
+}
+
+export interface MarkAllNotificationsReadResponse {
+  updated: number;
+}
+
 // API Response wrapper
 export type ApiResponse<T> =
   | { success: true; data: T; pagination?: Pagination }

@@ -4,11 +4,14 @@ import { useFamily } from '@/context/FamilyContext';
 import { useAuth } from '@/context/AuthContext';
 import { getAvatarSrc } from '@/assets/avatars';
 import { primaryNavItems } from '@/components/Navigation/navItems';
+import { useUnreadNotificationsCountQuery } from '@/query/hooks/useUnreadNotificationsCountQuery'
 import './SidebarNav.css';
 
 const SidebarNav: React.FC = () => {
-  const { role } = useFamily();
+  const { role, familyId } = useFamily();
   const { user } = useAuth();
+  const unreadCountQuery = useUnreadNotificationsCountQuery(familyId)
+  const unreadCount = unreadCountQuery.data ?? 0
 
   return (
     <aside className="app-sidebar">
@@ -26,7 +29,14 @@ const SidebarNav: React.FC = () => {
               to={item.to}
               className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
             >
-              <Icon size={20} strokeWidth={2} />
+              <span className="relative">
+                <Icon size={20} strokeWidth={2} />
+                {item.to === '/history' && unreadCount > 0 ? (
+                  <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] leading-none flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                ) : null}
+              </span>
               <span className="sidebar-nav-label">{item.label}</span>
             </NavLink>
           );

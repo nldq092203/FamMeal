@@ -12,3 +12,5 @@ export * from '@/db/schema/family-member.table.js';
 export * from '@/db/schema/meal.table.js';
 export * from '@/db/schema/proposal.table.js';
 export * from '@/db/schema/vote.table.js';
+export * from '@/db/schema/notification.table.js';
+export * from '@/db/schema/scheduled-notification.table.js';

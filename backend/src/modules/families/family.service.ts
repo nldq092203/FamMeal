@@ -6,6 +6,8 @@ import { users } from '@/db/schema/user.table';
 import { CreateFamilyInput, UpdateFamilyInput, AddFamilyMemberInput, UpdateFamilyProfileInput, UpdateFamilySettingsInput } from './family.schema';
 import { NotFoundError, ForbiddenError, ConflictError } from '@/shared/errors';
 import { cacheDel, cacheWrapJson } from '@/shared/cache/index.js';
+import { NotificationService } from '@/modules/notifications/notification.service';
+import { NotificationType } from '@/shared/notifications';
 
 type FamilyDetailsMember = {
   userId: string;
@@ -208,53 +210,72 @@ export class FamilyService {
     // Check permissions
     await this.checkFamilyRole(familyId, currentUserId, ['ADMIN']);
 
-    // Find user by username/email
-    const [userToAdd] = await db
-      .select()
-      .from(users)
-      .where(
-        data.username
-          ? eq(users.username, data.username)
-          : eq(users.email, data.email!)
-      );
+    return await db.transaction(async (tx) => {
+      // Find user by username/email
+      const [userToAdd] = await tx
+        .select()
+        .from(users)
+        .where(
+          data.username
+            ? eq(users.username, data.username)
+            : eq(users.email, data.email!)
+        );
 
-    if (!userToAdd) {
-      const identifier = data.username ? `username ${data.username}` : `email ${data.email}`;
-      throw new NotFoundError(`User with ${identifier} not found`);
-    }
+      if (!userToAdd) {
+        const identifier = data.username ? `username ${data.username}` : `email ${data.email}`;
+        throw new NotFoundError(`User with ${identifier} not found`);
+      }
 
-    // Check if already a member
-    const [existingMember] = await db
-      .select()
-      .from(familyMembers)
-      .where(and(
-        eq(familyMembers.familyId, familyId),
-        eq(familyMembers.userId, userToAdd.id)
-      ));
+      // Check if already a member
+      const [existingMember] = await tx
+        .select()
+        .from(familyMembers)
+        .where(and(
+          eq(familyMembers.familyId, familyId),
+          eq(familyMembers.userId, userToAdd.id)
+        ));
 
-    if (existingMember) {
-      throw new ConflictError('User is already a member of this family');
-    }
+      if (existingMember) {
+        throw new ConflictError('User is already a member of this family');
+      }
 
-    // Add member
-    const [newMember] = await db
-      .insert(familyMembers)
-      .values({
-        familyId,
-        userId: userToAdd.id,
-        role: data.role || 'MEMBER',
-      })
-      .returning();
+      // Add member
+      const [newMember] = await tx
+        .insert(familyMembers)
+        .values({
+          familyId,
+          userId: userToAdd.id,
+          role: data.role || 'MEMBER',
+        })
+        .returning();
 
-    if (!newMember) {
-      throw new Error('Failed to add member');
-    }
+      if (!newMember) {
+        throw new Error('Failed to add member');
+      }
 
-    await cacheDel(this.familyDetailsCacheKey(familyId));
-    return {
-      ...newMember,
-      avatarId: userToAdd.avatarId,
-    } as unknown as FamilyMember;
+      // Notify existing members that a new member joined (exclude the new member)
+      const members = await tx
+        .select({ userId: familyMembers.userId })
+        .from(familyMembers)
+        .where(eq(familyMembers.familyId, familyId));
+
+      const recipients = members.map((m) => m.userId).filter((id) => id !== userToAdd.id);
+      if (recipients.length) {
+        const notificationService = new NotificationService(tx as unknown as typeof db);
+        await notificationService.createForUsers({
+          users: recipients,
+          familyId,
+          type: NotificationType.MEMBER_JOINED,
+          refId: userToAdd.id,
+        });
+      }
+
+      await cacheDel(this.familyDetailsCacheKey(familyId));
+      return {
+        ...newMember,
+        avatarId: userToAdd.avatarId,
+      } as unknown as FamilyMember;
+    });
   }
 
   /**

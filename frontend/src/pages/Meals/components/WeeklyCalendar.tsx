@@ -102,7 +102,7 @@ export function WeeklyCalendar({ weekStart, selectedDays, onDayToggle, onWeekCha
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-2">
         <div className="grid grid-cols-7 gap-1">
-          {weekDays.map((date, index) => {
+          {weekDays.map((date) => {
             const isCurrentDay = isToday(date)
             const isSelectedDay = isSelected(date)
 

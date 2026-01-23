@@ -4,6 +4,9 @@ import { meals } from '@/db/schema/meal.table';
 import { proposals } from '@/db/schema/proposal.table';
 import { NotFoundError, ValidationError } from '@/shared/errors';
 import { checkFamilyRole } from '@/middleware/rbac.middleware';
+import { familyMembers } from '@/db/schema/family-member.table';
+import { NotificationService } from '@/modules/notifications/notification.service';
+import { NotificationType } from '@/shared/notifications';
 
 export class MealAdminService {
   /**
@@ -85,58 +88,87 @@ export class MealAdminService {
       reason?: string;
     }
   ): Promise<typeof meals.$inferSelect> {
-    const [meal] = await db.select().from(meals).where(eq(meals.id, mealId));
-    
-    if (!meal) {
-      throw new NotFoundError('Meal not found');
-    }
+    return await db.transaction(async (tx) => {
+      const [meal] = await tx.select().from(meals).where(eq(meals.id, mealId));
 
-    await checkFamilyRole(userId, meal.familyId, 'ADMIN');
+      if (!meal) {
+        throw new NotFoundError('Meal not found');
+      }
 
-    if (meal.status !== 'LOCKED') {
-      throw new ValidationError('Can only finalize meals in LOCKED status');
-    }
+      await checkFamilyRole(userId, meal.familyId, 'ADMIN');
 
-    const selectedProposalIds = decision.selectedProposalIds;
+      if (meal.status !== 'LOCKED') {
+        throw new ValidationError('Can only finalize meals in LOCKED status');
+      }
 
-    const proposalsInMeal = await db
-      .select({ id: proposals.id })
-      .from(proposals)
-      .where(and(
-        inArray(proposals.id, selectedProposalIds),
-        eq(proposals.mealId, mealId),
-        isNull(proposals.deletedAt)
-      ));
+      const selectedProposalIds = decision.selectedProposalIds;
 
-    if (proposalsInMeal.length !== selectedProposalIds.length) {
-      throw new NotFoundError('One or more selected proposals were not found in this meal');
-    }
+      const proposalsInMeal = await tx
+        .select({ id: proposals.id })
+        .from(proposals)
+        .where(and(
+          inArray(proposals.id, selectedProposalIds),
+          eq(proposals.mealId, mealId),
+          isNull(proposals.deletedAt)
+        ));
 
-    const finalDecision = {
-      selectedProposalIds,
-      decidedByUserId: userId,
-      reason: decision.reason,
-    };
+      if (proposalsInMeal.length !== selectedProposalIds.length) {
+        throw new NotFoundError('One or more selected proposals were not found in this meal');
+      }
 
-    const cookUserId = decision.cookUserId ?? meal.cookUserId ?? userId;
-    await checkFamilyRole(cookUserId, meal.familyId, 'MEMBER');
+      const finalDecision = {
+        selectedProposalIds,
+        decidedByUserId: userId,
+        reason: decision.reason,
+      };
 
-    const [updatedMeal] = await db
-      .update(meals)
-      .set({
-        status: 'COMPLETED',
-        finalizedAt: new Date(),
-        finalDecision,
-        cookUserId,
-        updatedAt: new Date(),
-      })
-      .where(eq(meals.id, mealId))
-      .returning();
+      const cookUserId = decision.cookUserId ?? meal.cookUserId ?? userId;
+      await checkFamilyRole(cookUserId, meal.familyId, 'MEMBER');
 
-    if (!updatedMeal) {
-      throw new NotFoundError('Meal not found or could not be updated');
-    }
+      const [updatedMeal] = await tx
+        .update(meals)
+        .set({
+          status: 'COMPLETED',
+          finalizedAt: new Date(),
+          finalDecision,
+          cookUserId,
+          updatedAt: new Date(),
+        })
+        .where(eq(meals.id, mealId))
+        .returning();
 
-    return updatedMeal;
+      if (!updatedMeal) {
+        throw new NotFoundError('Meal not found or could not be updated');
+      }
+
+      const members = await tx
+        .select({ userId: familyMembers.userId })
+        .from(familyMembers)
+        .where(eq(familyMembers.familyId, meal.familyId));
+
+      const memberIds = members.map((m) => m.userId);
+
+      const notificationService = new NotificationService(tx as unknown as typeof db);
+
+      // Notify everyone that the meal is finalized
+      if (memberIds.length) {
+        await notificationService.createForUsers({
+          users: memberIds,
+          familyId: meal.familyId,
+          type: NotificationType.MEAL_FINALIZED,
+          refId: mealId,
+        });
+      }
+
+      // Notify assigned cook
+      await notificationService.createForUser({
+        userId: cookUserId,
+        familyId: meal.familyId,
+        type: NotificationType.COOK_ASSIGNED,
+        refId: mealId,
+      });
+
+      return updatedMeal;
+    });
   }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Search, ChevronDown, Check, Plus, Image as ImageIcon, ChefHat } from 'lucide-react';
+import { ArrowLeft, Calendar, Search, ChevronDown, Check, Plus, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useFamily } from '@/context/FamilyContext';
 import { Button } from '@/components/ui/button';
