@@ -1,37 +1,45 @@
 # Mama Meal API (Frontend Reference)
 
-## Base URL
+## Overview
+
+### Base URL
 - Local: `http://localhost:3000`
 - All endpoints below are relative to the base URL.
 
-## Content Type
+### Content Type
 - Request: `Content-Type: application/json`
 - Response: JSON (except `204 No Content`)
 
-## Auth
-This API uses JWT Bearer tokens.
+---
 
-1) `POST /api/auth/login` returns `{ accessToken, refreshToken }`.
-2) Send access token on protected routes:
-   - `Authorization: Bearer <accessToken>`
+## Authentication
 
-### Public vs protected
-- Public:
-  - `POST /api/auth/register`
-  - `POST /api/auth/login`
-  - `POST /api/auth/refresh`
-- Protected (requires `Authorization`):
-  - Everything else under `/api/*`
-  - `GET /api/auth/me`
+### Authorization
+This API uses JWT Bearer tokens:
 
-## Standard response shapes
-### Success
-Most success responses:
+1. `POST /api/auth/login` returns `{ accessToken, refreshToken }`
+2. Send access token on protected routes: `Authorization: Bearer <accessToken>`
+
+### Public Endpoints
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+
+### Protected Endpoints
+- All other `/api/*` endpoints require `Authorization` header
+- `GET /api/auth/me`
+
+---
+
+## Response Format
+
+### Success Response
+Most endpoints return:
 ```json
 { "success": true, "data": {} }
 ```
 
-Paginated responses:
+**Paginated Response:**
 ```json
 {
   "success": true,
@@ -47,8 +55,7 @@ Paginated responses:
 }
 ```
 
-### Error
-Errors are normalized:
+### Error Response
 ```json
 {
   "success": false,
@@ -61,24 +68,25 @@ Errors are normalized:
 }
 ```
 
-Common error codes:
+### Error Codes
 - `VALIDATION_ERROR` (400)
 - `UNAUTHORIZED` (401)
 - `FORBIDDEN` (403)
 - `NOT_FOUND` (404)
 - `CONFLICT` (409)
 
-Notes:
-- Some endpoints return `204 No Content` on success (empty body).
+**Note:** Some endpoints return `204 No Content` on success (empty body).
 
 ---
 
-## Auth
+## API Endpoints
 
-### Register
-`POST /api/auth/register`
+### Authentication
 
-Request body:
+#### Register
+`POST /api/auth/register` *(Public)*
+
+**Request:**
 ```json
 {
   "email": "parent@example.com",
@@ -88,10 +96,7 @@ Request body:
 }
 ```
 
-Notes:
-- `username` must be unique.
-
-Response `201`:
+**Response** `201`:
 ```json
 {
   "success": true,
@@ -103,15 +108,20 @@ Response `201`:
 }
 ```
 
-### Login
-`POST /api/auth/login`
+**Notes:**
+- `username` must be unique
 
-Request body:
+---
+
+#### Login
+`POST /api/auth/login` *(Public)*
+
+**Request:**
 ```json
 { "email": "parent@example.com", "password": "password123" }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 {
   "success": true,
@@ -123,71 +133,58 @@ Response `200`:
 }
 ```
 
-### Refresh token
-`POST /api/auth/refresh`
+---
 
-Request body:
+#### Refresh Token
+`POST /api/auth/refresh` *(Public)*
+
+**Request:**
 ```json
 { "refreshToken": "..." }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "accessToken": "...", "refreshToken": "..." } }
 ```
 
-### Current user
-`GET /api/auth/me` (protected)
+---
 
-Response `200`:
+#### Get Current User
+`GET /api/auth/me` *(Protected)*
+
+**Response** `200`:
 ```json
-{ "success": true, "data": { "id": "uuid", "email": "parent@example.com", "username": "parent1", "name": "Parent One", "avatarId": "panda" } }
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "parent@example.com",
+    "username": "parent1",
+    "name": "Parent One",
+    "avatarId": "panda"
+  }
+}
 ```
 
 ---
 
-## Users (protected)
+### Users
 
-### List users
-`GET /api/users?page=1&pageSize=20`
+#### Get User
+`GET /api/users/:id` *(Protected)*
 
-Response `200`:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid",
-      "email": "...",
-      "username": "...",
-      "name": "...",
-      "avatarId": "panda",
-      "createdAt": "2026-01-20T00:00:00.000Z",
-      "updatedAt": "2026-01-20T00:00:00.000Z",
-      "deletedAt": null
-    }
-  ],
-  "pagination": { "page": 1, "pageSize": 20, "totalPages": 1, "totalItems": 1, "hasNext": false, "hasPrevious": false }
-}
-```
-
-### Get user
-`GET /api/users/:id`
-
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "email": "...", "username": "...", "name": "...", "avatarId": "panda" } }
 ```
 
-### Suggest users (typeahead)
-`GET /api/users/suggest?q=jo&limit=8`
+---
 
-Notes:
-- Response is cached briefly (10–60s) when Redis is enabled.
-- Endpoint is rate-limited.
-- `avatarId` is the avatar identifier stored in the DB (e.g. `"panda"`).
+#### Suggest Users (Typeahead)
+`GET /api/users/suggest?q=jo&limit=8` *(Protected)*
 
-Response `200`:
+**Response** `200`:
 ```json
 {
   "success": true,
@@ -197,32 +194,47 @@ Response `200`:
 }
 ```
 
-### Update user
-`PATCH /api/users/:id`
+**Notes:**
+- Response is cached (10–60s) when Redis is enabled
+- Endpoint is rate-limited
+- `avatarId` is the avatar identifier in DB (e.g., `"panda"`)
 
-Request body (any subset):
+---
+
+#### Update User
+`PATCH /api/users/:id` *(Protected)*
+
+**Request:**
 ```json
-{ "email": "new@example.com", "username": "newname", "name": "New Name", "avatarId": "raccoon", "password": "newpassword123" }
+{
+  "email": "new@example.com",
+  "username": "newname",
+  "name": "New Name",
+  "avatarId": "raccoon",
+  "password": "newpassword123"
+}
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "email": "new@example.com", "username": "newname", "name": "New Name", "avatarId": "raccoon" } }
 ```
 
-### Delete user
-`DELETE /api/users/:id`
+---
 
-Response `204 No Content`
+#### Delete User
+`DELETE /api/users/:id` *(Protected)*
+
+**Response** `204 No Content`
 
 ---
 
-## Families (protected)
+### Families
 
-### Create family
-`POST /api/families`
+#### Create Family
+`POST /api/families` *(Protected)*
 
-Request body:
+**Request:**
 ```json
 {
   "name": "Nguyen Family",
@@ -239,46 +251,111 @@ Request body:
 }
 ```
 
-Response `201`:
+**Response** `201`:
 ```json
-{ "success": true, "data": { "id": "uuid", "name": "Nguyen Family", "avatarId": "panda", "settings": {}, "createdAt": "...", "updatedAt": "...", "deletedAt": null } }
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Nguyen Family",
+    "avatarId": "panda",
+    "settings": {},
+    "createdAt": "...",
+    "updatedAt": "...",
+    "deletedAt": null
+  }
+}
 ```
 
-### Add family member (admin)
-`POST /api/admin/families/:id/members`
+**Notes:**
+- Creator automatically becomes ADMIN
 
-Request body:
+---
+
+#### List My Families
+`GET /api/families` *(Protected)*
+
+**Response** `200`:
 ```json
-{ "username": "parent2", "role": "MEMBER" }
+{ "success": true, "data": [ { "id": "uuid", "name": "...", "avatarId": "panda", "role": "ADMIN" } ] }
 ```
 
-Or:
+---
+
+#### Get Family
+`GET /api/families/:id` *(Protected)*
+
+**Response** `200`:
 ```json
-{ "email": "parent2@example.com", "role": "MEMBER" }
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "...",
+    "avatarId": "panda",
+    "settings": {},
+    "myRole": "ADMIN",
+    "members": [
+      {
+        "userId": "uuid",
+        "username": "parent1",
+        "name": "Parent One",
+        "avatarId": "panda",
+        "role": "ADMIN",
+        "joinedAt": "2026-01-20T00:00:00.000Z"
+      }
+    ]
+  }
+}
 ```
 
-Response `201`:
+---
+
+#### Get Family Meal History
+`GET /api/families/:id/history?limit=10&offset=0` *(Protected)*
+
+**Response** `200`:
 ```json
-{ "success": true, "data": { "familyId": "uuid", "userId": "uuid", "role": "MEMBER", "joinedAt": "...", "avatarId": "panda" } }
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "date": "2026-01-20",
+      "mealType": "DINNER",
+      "status": "PLANNING",
+      "cookUserId": "uuid",
+      "proposalCount": 0,
+      "voteCount": 0,
+      "votingClosedAt": null,
+      "finalizedAt": null,
+      "hasFinalDecision": false
+    }
+  ]
+}
 ```
 
-### Update family profile (admin)
+---
+
+#### Update Family Profile *(Admin)*
 `PATCH /api/admin/families/:id/profile`
 
-Request body (any subset):
+**Request:**
 ```json
 { "name": "Nguyen Family", "avatarId": "panda" }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "name": "Nguyen Family", "avatarId": "panda", "settings": {} } }
 ```
 
-### Update family settings (admin)
+---
+
+#### Update Family Settings *(Admin)*
 `PATCH /api/admin/families/:id/settings`
 
-Request body:
+**Request:**
 ```json
 {
   "settings": {
@@ -290,71 +367,46 @@ Request body:
 }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "name": "Nguyen Family", "avatarId": "panda", "settings": {} } }
 ```
 
-### List my families
-`GET /api/families`
+---
 
-Response `200`:
+#### Add Family Member *(Admin)*
+`POST /api/admin/families/:id/members`
+
+**Request:**
 ```json
-{ "success": true, "data": [ { "id": "uuid", "name": "...", "avatarId": "panda", "role": "ADMIN" } ] }
+{ "username": "parent2", "role": "MEMBER" }
 ```
 
-### Get family
-`GET /api/families/:id`
-
-Response `200`:
+Or:
 ```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "name": "...",
-    "avatarId": "panda",
-    "settings": {},
-    "myRole": "ADMIN",
-    "members": [
-      { "userId": "uuid", "username": "parent1", "name": "Parent One", "avatarId": "panda", "role": "ADMIN", "joinedAt": "2026-01-20T00:00:00.000Z" }
-    ]
-  }
-}
+{ "email": "parent2@example.com", "role": "MEMBER" }
 ```
 
-### Family meal history
-`GET /api/families/:id/history?limit=10&offset=0`
-
-Response `200`:
+**Response** `201`:
 ```json
-{
-  "success": true,
-  "data": [
-	    {
-	      "id": "uuid",
-	      "date": "2026-01-20",
-	      "mealType": "DINNER",
-	      "status": "PLANNING",
-	      "cookUserId": "uuid",
-	      "proposalCount": 0,
-	      "voteCount": 0,
-	      "votingClosedAt": null,
-	      "finalizedAt": null,
-	      "hasFinalDecision": false
-	    }
-  ]
-}
+{ "success": true, "data": { "familyId": "uuid", "userId": "uuid", "role": "MEMBER", "joinedAt": "...", "avatarId": "panda" } }
 ```
 
 ---
 
-## Meals (protected)
+#### Remove Family Member *(Admin)*
+`DELETE /api/admin/families/:id/members/:memberId`
 
-### Create meal
-`POST /api/meals`
+**Response** `204 No Content`
 
-Request body:
+---
+
+### Meals
+
+#### Create Meal *(Admin)*
+`POST /api/admin/meals`
+
+**Request:**
 ```json
 {
   "familyId": "uuid",
@@ -370,57 +422,41 @@ Request body:
 }
 ```
 
-Notes:
-- `scheduledFor` accepts either `YYYY-MM-DD` or an ISO timestamp like `2026-01-22T12:00:00Z` (server normalizes to `YYYY-MM-DD`).
-- Requires you to be a family `ADMIN` for the provided `familyId`.
-
-Response `201`:
+**Response** `201`:
 ```json
 { "success": true, "data": { "id": "uuid", "familyId": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" } }
 ```
 
-### List meals
-`GET /api/meals?familyId=uuid&startDate=2026-01-01&endDate=2026-01-31&status=PLANNING`
+**Notes:**
+- `scheduledFor` accepts `YYYY-MM-DD` or ISO timestamp (normalized to `YYYY-MM-DD`)
+- Requires family ADMIN role
 
-Response `200`:
+---
+
+#### List Meals
+`GET /api/meals?familyId=uuid&startDate=2026-01-01&endDate=2026-01-31&status=PLANNING` *(Protected)*
+
+**Response** `200`:
 ```json
 { "success": true, "data": [ { "id": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" } ] }
 ```
 
-### Get meal
-`GET /api/meals/:id`
+---
 
-Response `200`:
+#### Get Meal
+`GET /api/meals/:id` *(Protected)*
+
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "familyId": "uuid", "scheduledFor": "2026-01-20", "mealType": "DINNER", "status": "PLANNING", "cookUserId": "uuid" } }
 ```
 
-### Update meal
-`PATCH /api/meals/:id`
+---
 
-Notes:
-- Requires you to be a family `ADMIN` for the meal’s family.
-- Status transitions happen via the admin meal endpoints (`/api/admin/meals/...`), not this endpoint.
+#### Get Meal Summary
+`GET /api/meals/:id/summary` *(Protected)*
 
-Request body (any subset):
-```json
-{ "scheduledFor": "2026-01-21", "mealType": "LUNCH", "constraints": { "maxBudget": 30 } }
-```
-
-Response `200`:
-```json
-{ "success": true, "data": { "id": "uuid", "status": "LOCKED", "cookUserId": "uuid" } }
-```
-
-### Delete meal (soft delete)
-`DELETE /api/meals/:id`
-
-Response `204 No Content`
-
-### Meal summary (proposals + votes + decision)
-`GET /api/meals/:id/summary`
-
-Response `200` (shape):
+**Response** `200`:
 ```json
 {
   "success": true,
@@ -442,43 +478,57 @@ Response `200` (shape):
 }
 ```
 
-### Get my votes for a meal
-`GET /api/meals/:id/votes/my-votes`
+---
 
-Response `200`:
+#### Get My Votes for Meal
+`GET /api/meals/:id/votes/my-votes` *(Protected)*
+
+**Response** `200`:
 ```json
 {
   "success": true,
   "data": [
-    {
-      "voteId": "uuid",
-      "proposalId": "uuid",
-      "dishName": "Pho",
-      "rankPosition": 1
-    },
-    {
-      "voteId": "uuid",
-      "proposalId": "uuid",
-      "dishName": "Spring Rolls",
-      "rankPosition": 2
-    }
+    { "voteId": "uuid", "proposalId": "uuid", "dishName": "Pho", "rankPosition": 1 },
+    { "voteId": "uuid", "proposalId": "uuid", "dishName": "Spring Rolls", "rankPosition": 2 }
   ]
 }
 ```
 
-Notes:
-- Returns all votes the authenticated user has cast for proposals in the specified meal
-- Results are ordered by rank position (ascending)
-- Returns empty array if user hasn't voted yet
+**Notes:**
+- Returns all votes cast by authenticated user
+- Ordered by rank position (ascending)
+- Returns empty array if user hasn't voted
 
 ---
 
-## Proposals (protected)
+#### Update Meal *(Admin)*
+`PATCH /api/admin/meals/:id`
 
-### Create proposal for a meal
-`POST /api/meals/:mealId/proposals`
+**Request:**
+```json
+{ "scheduledFor": "2026-01-21", "mealType": "LUNCH", "constraints": { "maxBudget": 30 } }
+```
 
-Request body:
+**Response** `200`:
+```json
+{ "success": true, "data": { "id": "uuid", "status": "LOCKED", "cookUserId": "uuid" } }
+```
+
+---
+
+#### Delete Meal *(Admin)*
+`DELETE /api/admin/meals/:id`
+
+**Response** `204 No Content`
+
+---
+
+### Proposals
+
+#### Create Proposal
+`POST /api/meals/:mealId/proposals` *(Protected)*
+
+**Request:**
 ```json
 {
   "dishName": "Pho",
@@ -488,66 +538,84 @@ Request body:
 }
 ```
 
-Response `201`:
+**Response** `201`:
 ```json
 { "success": true, "data": { "id": "uuid", "mealId": "uuid", "userId": "uuid", "dishName": "Pho" } }
 ```
 
-### List proposals for a meal
-`GET /api/meals/:mealId/proposals`
+---
 
-Response `200`:
+#### List Proposals for Meal
+`GET /api/meals/:mealId/proposals` *(Protected)*
+
+**Response** `200`:
 ```json
 { "success": true, "data": [ { "id": "uuid", "mealId": "uuid", "userId": "uuid", "dishName": "Pho" } ] }
 ```
 
-### Get proposal
-`GET /api/proposals/:id`
+---
 
-Response `200`:
+#### Get Proposal
+`GET /api/proposals/:id` *(Protected)*
+
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "mealId": "uuid", "userId": "uuid", "dishName": "Pho" } }
 ```
 
-### Update proposal (owner only; meal must be PLANNING)
-`PATCH /api/proposals/:id`
+---
 
-Request body (any subset):
+#### Update Proposal
+`PATCH /api/proposals/:id` *(Protected)*
+
+**Request:**
 ```json
 { "notes": "Extra spicy" }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "notes": "Extra spicy" } }
 ```
 
-### Delete proposal (soft delete; owner only; meal must be PLANNING)
-`DELETE /api/proposals/:id`
-
-Response `204 No Content`
+**Restrictions:**
+- Owner only
+- Meal must be in PLANNING status
 
 ---
 
-## Votes (protected)
+#### Delete Proposal
+`DELETE /api/proposals/:id` *(Protected)*
 
-### Cast/update vote for a proposal
-`POST /api/proposals/:proposalId/votes`
+**Response** `204 No Content`
 
-Request body:
+**Restrictions:**
+- Owner only
+- Meal must be in PLANNING status
+
+---
+
+### Votes
+
+#### Cast/Update Vote
+`POST /api/proposals/:proposalId/votes` *(Protected)*
+
+**Request:**
 ```json
 { "rankPosition": 1 }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "proposalId": "uuid", "userId": "uuid", "rankPosition": 1 } }
 ```
 
-### Bulk vote for a meal (submit all rankings at once)
-`POST /api/meals/:id/votes/bulk`
+---
 
-Request body:
+#### Bulk Vote
+`POST /api/meals/:id/votes/bulk` *(Protected)*
+
+**Request:**
 ```json
 {
   "votes": [
@@ -558,7 +626,7 @@ Request body:
 }
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
 {
   "success": true,
@@ -570,86 +638,71 @@ Response `200`:
 }
 ```
 
-Notes:
-- Replaces all existing votes for the user in this meal with the new votes
-- All proposals must belong to the specified meal
-- Each rank position must be unique (no duplicates)
-- Meal must be in `PLANNING` status
-- At least one vote is required
-
-### Delete vote
-`DELETE /api/votes/:id`
-
-Response `204 No Content`
+**Notes:**
+- Replaces all existing user votes for this meal
+- All proposals must belong to specified meal
+- Rank positions must be unique (no duplicates)
+- Meal must be in PLANNING status
+- At least one vote required
 
 ---
 
-## Admin: Families (protected)
+#### Delete Vote
+`DELETE /api/votes/:id` *(Protected)*
 
-These endpoints require you to be a family `ADMIN`.
-
-### Update family
-`PATCH /api/admin/families/:id`
-
-Request body:
-```json
-{ "name": "New Family Name", "settings": { "defaultMaxBudget": 30 } }
-```
-
-Response `200`:
-```json
-{ "success": true, "data": { "id": "uuid", "name": "New Family Name" } }
-```
-
-### Add member
-`POST /api/admin/families/:id/members`
-
-Request body:
-```json
-{ "email": "member@example.com", "role": "MEMBER" }
-```
-
-Response `201`:
-```json
-{ "success": true, "data": { "familyId": "uuid", "userId": "uuid", "role": "MEMBER", "joinedAt": "..." } }
-```
-
-### Remove member
-`DELETE /api/admin/families/:id/members/:memberId`
-
-Response `204 No Content`
+**Response** `204 No Content`
 
 ---
 
-## Admin: Meals (protected)
+## Admin Operations
 
-These endpoints require you to be a family `ADMIN` for the meal’s family.
+All endpoints in this section require the authenticated user to be a family `ADMIN` for the relevant family.
 
-### Close voting
-`POST /api/admin/meals/:id/close-voting`
+### Close Voting
+`POST /api/admin/meals/:id/close-voting` *(Admin)*
 
-Response `200`:
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "status": "LOCKED", "votingClosedAt": "..." } }
 ```
 
-### Reopen voting
-`POST /api/admin/meals/:id/reopen-voting`
+---
 
-Response `200`:
+### Reopen Voting
+`POST /api/admin/meals/:id/reopen-voting` *(Admin)*
+
+**Response** `200`:
 ```json
 { "success": true, "data": { "id": "uuid", "status": "PLANNING", "votingClosedAt": null } }
 ```
 
-### Finalize meal
-`POST /api/admin/meals/:id/finalize`
+---
 
-Request body:
+### Finalize Meal
+`POST /api/admin/meals/:id/finalize` *(Admin)*
+
+**Request:**
 ```json
-{ "selectedProposalIds": ["uuid-1", "uuid-2"], "cookUserId": "uuid", "reason": "Most votes" }
+{
+  "selectedProposalIds": ["uuid-1", "uuid-2"],
+  "cookUserId": "uuid",
+  "reason": "Most votes"
+}
 ```
 
-Response `200`:
+**Response** `200`:
 ```json
-{ "success": true, "data": { "id": "uuid", "status": "COMPLETED", "finalizedAt": "...", "cookUserId": "uuid", "finalDecision": { "selectedProposalIds": ["uuid-1", "uuid-2"], "decidedByUserId": "uuid" } } }
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "status": "COMPLETED",
+    "finalizedAt": "...",
+    "cookUserId": "uuid",
+    "finalDecision": {
+      "selectedProposalIds": ["uuid-1", "uuid-2"],
+      "decidedByUserId": "uuid"
+    }
+  }
+}
 ```
