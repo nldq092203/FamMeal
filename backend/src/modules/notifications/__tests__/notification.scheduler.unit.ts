@@ -6,7 +6,7 @@ import { scheduledNotifications } from '@/db/schema/scheduled-notification.table
 import { notifications } from '@/db/schema/notification.table';
 import { and, eq } from 'drizzle-orm';
 import { NotificationType } from '@/shared/notifications';
-import { runNotificationSchedulerTick } from '../../../../workers/notification-scheduler/scheduler';
+import { runNotificationSchedulerTick } from '@/modules/notifications/notification.jobs';
 
 describe('notification-scheduler', () => {
   useNotificationTestDb();
@@ -87,4 +87,3 @@ describe('notification-scheduler', () => {
     expect(createdAfterSecondRun).toHaveLength(2);
   });
 });
-

@@ -32,6 +32,13 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+
+  // Cron (Vercel cron jobs or external scheduler)
+  // If set, cron endpoints will accept ?secret=... (in addition to Vercel's x-vercel-cron header when present).
+  CRON_SECRET: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : v),
+    z.string().min(16).optional()
+  ),
 });
 
 /**

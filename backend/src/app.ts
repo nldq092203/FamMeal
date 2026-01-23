@@ -13,6 +13,7 @@ import { proposalRoutes, directProposalRoutes } from '@/modules/proposals/propos
 import { voteRoutes, directVoteRoutes } from '@/modules/votes/vote.routes.js';
 import { authRoutes } from '@/modules/auth/auth.routes.js';
 import { notificationRoutes } from '@/modules/notifications/notification.routes.js';
+import { notificationCronRoutes } from '@/modules/notifications/notification.cron.routes.js';
 import { ZodError } from 'zod';
 import { AppError } from '@/shared/errors.js';
 
@@ -142,6 +143,7 @@ export const buildApp = async (): Promise<FastifyInstance> => {
    */
   // Public routes
   await app.register(authRoutes, { prefix: '/api/auth' });
+  await app.register(notificationCronRoutes, { prefix: '/api/cron/notifications' });
 
   // Protected routes (require authentication)
   await app.register(async (protectedApp) => {

@@ -40,7 +40,8 @@
     },
     "include": [
         "src/**/*",
-        "workers/**/*"
+        "workers/**/*",
+        "api/**/*"
     ],
     "exclude": [
         "node_modules",

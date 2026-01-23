@@ -5,7 +5,7 @@ import { notifications } from '@/db/schema/notification.table';
 import { scheduledNotifications } from '@/db/schema/scheduled-notification.table';
 import { and, eq } from 'drizzle-orm';
 import { NotificationType } from '@/shared/notifications';
-import { runNotificationCleanupJob } from '../../../../workers/notification-scheduler/scheduler';
+import { runNotificationCleanupJob } from '@/modules/notifications/notification.jobs';
 
 describe('notification-cleanup', () => {
   useNotificationTestDb();
@@ -125,4 +125,3 @@ describe('notification-cleanup', () => {
     expect(remainingSchedules.map((s) => s.status).sort()).toEqual(['CANCELED', 'DONE', 'PENDING'].sort());
   });
 });
-

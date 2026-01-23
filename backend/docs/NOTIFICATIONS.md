@@ -113,6 +113,14 @@ Run worker (separate process):
 
 - `npm run worker:notification-scheduler`
 
+Vercel production note:
+
+- Vercel doesn’t run long-lived workers reliably; use Vercel Cron Jobs instead.
+- Cron endpoints (public, but limited to Vercel cron header or `CRON_SECRET`):
+  - `GET /api/cron/notifications/tick`
+  - `GET /api/cron/notifications/cleanup`
+- `vercel.json` configures schedules (every minute + daily 03:00 UTC).
+
 `index.ts`
 
 - connects to DB
