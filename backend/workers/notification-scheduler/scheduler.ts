@@ -20,7 +20,7 @@ export function startNotificationScheduler(): SchedulerHandle {
     logger.info({ startedAt: startedAt.toISOString() }, 'notification-scheduler: tick start');
 
     try {
-      await runNotificationSchedulerWindowedJob({ limit: 500, now: new Date() });
+      await runNotificationSchedulerWindowedJob({ limit: 200, now: new Date() });
     } finally {
       const endedAt = new Date();
       logger.info(

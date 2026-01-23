@@ -1,4 +1,4 @@
-import { and, eq, gt, lt, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
 import { db } from '@/db/index.js';
 import { familyMembers } from '@/db/schema/family-member.table.js';
 import { notifications } from '@/db/schema/notification.table.js';
@@ -101,7 +101,7 @@ export async function runNotificationSchedulerWindowedJob(params?: {
 }): Promise<{ jobName: string; lastRunAt: Date; now: Date; due: number; processed: number; failed: number; skipped: boolean }> {
   const jobName = params?.jobName ?? 'send_notifications';
   const now = params?.now ?? new Date();
-  const limit = params?.limit ?? 500;
+  const limit = params?.limit ?? 200;
 
   const lockKey = advisoryLockKey(jobName);
 
@@ -132,11 +132,14 @@ export async function runNotificationSchedulerWindowedJob(params?: {
     const dueRows = await db
       .select({
         id: scheduledNotifications.id,
+        scheduledAt: scheduledNotifications.scheduledAt,
       })
       .from(scheduledNotifications)
       .where(and(
         eq(scheduledNotifications.status, 'PENDING'),
-        gt(scheduledNotifications.scheduledAt, lastRunAt),
+        // Include boundary to avoid missing rows when we advance lastRunAt to a timestamp.
+        // DONE rows won't re-appear due to status filter.
+        gte(scheduledNotifications.scheduledAt, lastRunAt),
         lte(scheduledNotifications.scheduledAt, now)
       ))
       .orderBy(scheduledNotifications.scheduledAt)
@@ -166,7 +169,7 @@ export async function runNotificationSchedulerWindowedJob(params?: {
 
           if (!schedule) return;
           if (schedule.status !== 'PENDING') return;
-          if (!(schedule.scheduledAt > lastRunAt && schedule.scheduledAt <= now)) return;
+          if (!(schedule.scheduledAt >= lastRunAt && schedule.scheduledAt <= now)) return;
 
           const memberIds = await getFamilyMemberIds(schedule.familyId, txDb);
 
@@ -197,13 +200,27 @@ export async function runNotificationSchedulerWindowedJob(params?: {
       }
     }
 
-    await db
-      .insert(cronState)
-      .values({ jobName, lastRunAt: now })
-      .onConflictDoUpdate({
-        target: cronState.jobName,
-        set: { lastRunAt: now },
-      });
+    // Advance window cursor only if everything in this run succeeded.
+    // If anything failed, keep lastRunAt unchanged so PENDING rows are retried next run.
+    if (failed === 0) {
+      // If we hit the limit, don't jump all the way to `now` (could skip unprocessed rows <= now).
+      // Instead, advance to the max scheduledAt we *considered* this run; next run continues from there.
+      const maxScheduledAt = dueRows.reduce<Date | null>(
+        (acc, r) => (acc && acc > r.scheduledAt ? acc : r.scheduledAt),
+        null
+      );
+      const nextLastRunAt = dueRows.length === 0
+        ? now
+        : (dueRows.length >= limit ? (maxScheduledAt ?? lastRunAt) : now);
+
+      await db
+        .insert(cronState)
+        .values({ jobName, lastRunAt: nextLastRunAt })
+        .onConflictDoUpdate({
+          target: cronState.jobName,
+          set: { lastRunAt: nextLastRunAt },
+        });
+    }
 
     return { jobName, lastRunAt, now, due: dueRows.length, processed, failed, skipped: false };
   } finally {

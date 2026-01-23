@@ -25,7 +25,7 @@ export async function notificationCronRoutes(app: FastifyInstance) {
   // GET /api/cron/notifications/tick
   app.get('/tick', async (request, reply) => {
     const parsed = assertCronAuthorized(request);
-    const result = await runNotificationSchedulerWindowedJob({ limit: parsed.limit ?? 500 });
+    const result = await runNotificationSchedulerWindowedJob({ limit: parsed.limit ?? 200 });
     return reply.send(result);
   });
 
