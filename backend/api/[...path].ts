@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { FastifyInstance } from 'fastify';
-import { buildApp } from '../src/app.js';
+// IMPORTANT: Vercel's TS transpilation does not honor tsconfig path aliases like "@/*".
+// We import from the compiled output where `tsc-alias` has rewritten those imports.
+import { buildApp } from '../dist/app.js';
 
 export const config = {
   runtime: 'nodejs',
