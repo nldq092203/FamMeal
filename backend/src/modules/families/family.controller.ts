@@ -186,4 +186,23 @@ export class FamilyController {
 
     return reply.status(204).send();
   }
+
+  /**
+   * DELETE /families/:id - Delete family
+   */
+  async deleteFamily(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const { id } = request.params as { id: string };
+    const user = request.user;
+    
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
+    await this.familyService.deleteFamily(id, user.userId);
+
+    return reply.status(204).send();
+  }
 }

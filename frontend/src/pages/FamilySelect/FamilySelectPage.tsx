@@ -10,7 +10,7 @@ import { useFamily } from '@/context/FamilyContext'
 import { useToast } from '@/context/ToastContext'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useUserSuggestionsQuery } from '@/query/hooks/useUserSuggestionsQuery'
-import { useAddFamilyMemberMutation, useCreateFamilyMutation } from '@/query/hooks/useFamilyMutations'
+import { useCreateFamilyMutation, useDeleteFamilyMutation } from '@/query/hooks/useFamilyMutations'
 
 import { CreateFamilyDialog } from './components/CreateFamilyDialog'
 import { FamilyGrid } from './components/FamilyGrid'
@@ -33,14 +33,7 @@ export default function FamilySelectPage() {
 
   const [familyAvatarId, setFamilyAvatarId] = useState<AvatarId>('panda')
 
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([])
-  const [customCuisine, setCustomCuisine] = useState('')
-  const [showCustomCuisine, setShowCustomCuisine] = useState(false)
 
-  const [selectedDietary, setSelectedDietary] = useState<string[]>([])
-
-  const [maxBudget, setMaxBudget] = useState(30)
-  const [maxPrepTime, setMaxPrepTime] = useState(45)
 
   const [invitedMembers, setInvitedMembers] = useState<Array<UserSuggestion & { role: 'MEMBER' }>>([])
 
@@ -51,7 +44,7 @@ export default function FamilySelectPage() {
   })
 
   const createFamilyMutation = useCreateFamilyMutation()
-  const addFamilyMemberMutation = useAddFamilyMemberMutation()
+  const deleteFamilyMutation = useDeleteFamilyMutation()
 
   useEffect(() => {
     if (!selectedId && families.length === 1) setSelectedId(families[0]!.id)
@@ -76,12 +69,7 @@ export default function FamilySelectPage() {
   const resetCreateForm = () => {
     setCreateStep(1)
     setFamilyName('')
-    setSelectedCuisines([])
-    setCustomCuisine('')
-    setShowCustomCuisine(false)
-    setSelectedDietary([])
-    setMaxBudget(30)
-    setMaxPrepTime(45)
+
     setFamilyAvatarId('panda')
     setInvitedMembers([])
     setUserQuery('')
@@ -107,21 +95,24 @@ export default function FamilySelectPage() {
     }
 
     try {
-      const allCuisines = [...selectedCuisines]
-      if (customCuisine.trim()) {
-        allCuisines.push(...customCuisine.split(',').map((c) => c.trim()).filter(Boolean))
-      }
 
-      const allDietary = [...selectedDietary]
+
+
 
       const settings = {
-        defaultCuisinePreferences: allCuisines.length > 0 ? allCuisines : undefined,
-        defaultDietaryRestrictions: allDietary.length > 0 ? allDietary : undefined,
-        defaultMaxBudget: maxBudget,
-        defaultMaxPrepTime: maxPrepTime,
+        defaultCuisinePreferences: undefined,
+        defaultDietaryRestrictions: undefined,
+        defaultMaxBudget: undefined,
+        defaultMaxPrepTime: undefined,
       }
 
       setIsCreating(true)
+
+      const membersPayload = invitedMembers.map((m) => ({
+        username: m.username,
+        role: m.role,
+      }))
+
       const created = await createFamilyMutation.mutateAsync({
         name: familyName.trim(),
         avatarId: familyAvatarId,
@@ -132,19 +123,13 @@ export default function FamilySelectPage() {
           settings.defaultMaxPrepTime
             ? settings
             : undefined,
+        members: membersPayload.length > 0 ? membersPayload : undefined,
       })
 
-      const emailInvites = invitedMembers.filter((m) => Boolean(m.email))
-      if (emailInvites.length > 0) {
-        await Promise.allSettled(
-          emailInvites.map((m) =>
-            addFamilyMemberMutation.mutateAsync({ familyId: created.id, email: m.email!, role: 'MEMBER' })
-          )
-        )
-      }
+      // The backend should handle member invitations/additions based on the payload.
+      // We no longer need to manually call addFamilyMemberMutation here.
 
-      const missingEmailCount = invitedMembers.length - emailInvites.length
-      if (missingEmailCount > 0) toast.info('Some invites were skipped (missing email).')
+
 
       setActiveFamilyId(created.id)
       setIsCreateOpen(false)
@@ -153,8 +138,17 @@ export default function FamilySelectPage() {
       navigate('/', { replace: true })
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to create family group.'))
-    } finally {
       setIsCreating(false)
+    }
+  }
+
+  const handleDeleteFamily = async (id: string) => {
+    try {
+      await deleteFamilyMutation.mutateAsync(id)
+      if (selectedId === id) setSelectedId(null)
+      toast.success('Family group deleted.')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to delete family group.'))
     }
   }
 
@@ -212,6 +206,7 @@ export default function FamilySelectPage() {
             onSelect={setSelectedId}
             onCreate={() => setIsCreateOpen(true)}
             onContinue={continueToApp}
+            onDelete={handleDeleteFamily}
           />
         ) : (
           <OnboardingCreateCard onCreate={() => setIsCreateOpen(true)} />
@@ -232,18 +227,7 @@ export default function FamilySelectPage() {
         setFamilyName={setFamilyName}
         familyAvatarId={familyAvatarId}
         setFamilyAvatarId={setFamilyAvatarId}
-        selectedCuisines={selectedCuisines}
-        setSelectedCuisines={setSelectedCuisines}
-        customCuisine={customCuisine}
-        setCustomCuisine={setCustomCuisine}
-        showCustomCuisine={showCustomCuisine}
-        setShowCustomCuisine={setShowCustomCuisine}
-        selectedDietary={selectedDietary}
-        setSelectedDietary={setSelectedDietary}
-        maxBudget={maxBudget}
-        setMaxBudget={setMaxBudget}
-        maxPrepTime={maxPrepTime}
-        setMaxPrepTime={setMaxPrepTime}
+
         userQuery={userQuery}
         setUserQuery={setUserQuery}
         suggestions={suggestions}

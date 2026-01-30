@@ -108,12 +108,12 @@ export function Autocomplete({
         {...props}
       />
 
-      {showDropdown && (
-        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-auto">
-          {isLoading ? (
-            <div className="p-3 text-sm text-muted-foreground text-center">
-              {loadingMessage}
-            </div>
+	      {showDropdown && (
+	        <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-background/95 backdrop-blur shadow-lg max-h-60 overflow-auto">
+	          {isLoading ? (
+	            <div className="p-3 text-sm text-muted-foreground text-center">
+	              {loadingMessage}
+	            </div>
           ) : options.length === 0 ? (
             <div className="p-3 text-sm text-muted-foreground text-center">
               {emptyMessage}

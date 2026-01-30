@@ -1,8 +1,19 @@
-import { ArrowRight, Check, Plus, Users } from 'lucide-react'
+import { ArrowRight, Check, Plus, Users, Trash2 } from 'lucide-react'
 
 import type { FamilyListItem } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useState } from 'react'
 
 function roleLabel(role: string) {
   if (role === 'ADMIN') return 'Admin'
@@ -15,9 +26,11 @@ type FamilyGridProps = {
   onSelect: (id: string) => void
   onCreate: () => void
   onContinue: () => void
+  onDelete: (id: string) => void
 }
 
-export function FamilyGrid({ families, selectedId, onSelect, onCreate, onContinue }: FamilyGridProps) {
+export function FamilyGrid({ families, selectedId, onSelect, onCreate, onContinue, onDelete }: FamilyGridProps) {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   return (
     <>
       <section className="flex-1 mb-6">
@@ -28,7 +41,7 @@ export function FamilyGrid({ families, selectedId, onSelect, onCreate, onContinu
             return (
               <Card
                 key={f.id}
-                className={`cursor-pointer transition-all ${
+                className={`cursor-pointer transition-all group relative ${
                   isSelected ? 'ring-2 ring-primary shadow-md scale-[1.02]' : 'hover:shadow-sm'
                 }`}
                 role="button"
@@ -44,6 +57,20 @@ export function FamilyGrid({ families, selectedId, onSelect, onCreate, onContinu
                       <Check className="h-4 w-4" />
                     </div>
                   ) : null}
+
+                  {isAdmin && (
+                    <div 
+                      className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleteConfirmId(f.id)
+                      }}
+                    >
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
 
                   <div
                     className={`h-14 w-14 rounded-full flex items-center justify-center border-2 mt-2 ${
@@ -85,7 +112,31 @@ export function FamilyGrid({ families, selectedId, onSelect, onCreate, onContinu
           Continue to Meal Plan <ArrowRight className="h-5 w-5 ml-2" />
         </Button>
       </div>
+
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Family Group?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the family group and all its data, including meal plans and history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deleteConfirmId) {
+                   onDelete(deleteConfirmId)
+                   setDeleteConfirmId(null)
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
-

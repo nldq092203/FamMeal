@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { MapPin, UserPlus, Users as UsersIcon, Pencil, MoreVertical, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { MapPin, UserPlus, Users as UsersIcon, Pencil, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { getApiErrorMessage } from '@/api/error'
 import { useFamily } from '@/context/FamilyContext'
 import { useAuth } from '@/context/AuthContext'
@@ -9,14 +10,26 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getAvatarSrc } from '@/assets/avatars'
+import { formatCuisinePreferenceLabel } from '@/constants/cuisinePreferences'
 import { EditFamilyDialog } from './EditFamilyDialog'
 import { EditPreferencesDialog } from './EditPreferencesDialog'
 import { PageHeader, PageShell } from '@/components/Layout'
 import {
   useAddFamilyMemberMutation,
+  useDeleteFamilyMutation,
   useRemoveFamilyMemberMutation,
   useUpdateFamilyProfileMutation,
   useUpdateFamilySettingsMutation,
@@ -27,7 +40,8 @@ import {
  * Shows family info, members, and dietary constraints
  */
 export default function FamilyPage() {
-  const { family, role } = useFamily()
+  const navigate = useNavigate()
+  const { family, role, setActiveFamilyId, refreshFamilies } = useFamily()
   const { user } = useAuth()
   const toast = useToast()
   
@@ -37,11 +51,13 @@ export default function FamilyPage() {
   const [inviteTarget, setInviteTarget] = useState('')
   const [memberActionsOpen, setMemberActionsOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [deleteFamilyOpen, setDeleteFamilyOpen] = useState(false)
 
   const updateProfileMutation = useUpdateFamilyProfileMutation()
   const updateSettingsMutation = useUpdateFamilySettingsMutation()
   const addMemberMutation = useAddFamilyMemberMutation()
   const removeMemberMutation = useRemoveFamilyMemberMutation()
+  const deleteFamilyMutation = useDeleteFamilyMutation()
 
   const members =
     family?.members?.map((m) => ({
@@ -153,6 +169,27 @@ export default function FamilyPage() {
     }
   }
 
+  const handleDeleteFamily = async () => {
+    if (!family?.id) {
+      toast.error('Missing family id.')
+      return
+    }
+    if (role !== 'ADMIN') {
+      toast.error('Only admins can delete a family.')
+      return
+    }
+    try {
+      await deleteFamilyMutation.mutateAsync(family.id)
+      toast.success('Family deleted.')
+      setDeleteFamilyOpen(false)
+      setActiveFamilyId(null)
+      await refreshFamilies()
+      navigate('/family-select', { replace: true })
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to delete family.'))
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <PageShell density="tight" className="space-y-4">
@@ -190,7 +227,7 @@ export default function FamilyPage() {
                 {family?.settings?.defaultCuisinePreferences && family.settings.defaultCuisinePreferences.length > 0 && (
                   <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                     <MapPin className="h-3 w-3" />
-                    <span>{family.settings.defaultCuisinePreferences.slice(0, 2).join(', ')}</span>
+                    <span>{family.settings.defaultCuisinePreferences.slice(0, 2).map(formatCuisinePreferenceLabel).join(', ')}</span>
                   </div>
                 )}
               </CardContent>
@@ -248,6 +285,57 @@ export default function FamilyPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Danger Zone */}
+            <AdminOnly>
+              <Card className="border-destructive/30">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold">Danger zone</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Delete this family group. This will remove meals, proposals, votes, and members.
+                      </p>
+                    </div>
+                    <AlertDialog
+                      open={deleteFamilyOpen}
+                      onOpenChange={(open) => {
+                        if (deleteFamilyMutation.isPending) return
+                        setDeleteFamilyOpen(open)
+                      }}
+                    >
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="shrink-0"
+                        onClick={() => setDeleteFamilyOpen(true)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete family?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently deletes the family and all related data. This action can’t be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel disabled={deleteFamilyMutation.isPending}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDeleteFamily}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={deleteFamilyMutation.isPending}
+                          >
+                            {deleteFamilyMutation.isPending ? 'Deleting…' : 'Delete family'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
+            </AdminOnly>
           </div>
 
           {/* RIGHT COLUMN: Household Members */}

@@ -62,3 +62,14 @@ export function useRemoveFamilyMemberMutation() {
     },
   })
 }
+
+export function useDeleteFamilyMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (familyId: string) => adminFamilyService.deleteFamily(familyId),
+    onSuccess: async (_, familyId) => {
+      queryClient.removeQueries({ queryKey: queryKeys.families.byId(familyId) })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.families.all })
+    },
+  })
+}

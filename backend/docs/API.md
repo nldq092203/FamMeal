@@ -401,6 +401,13 @@ Or:
 
 ---
 
+#### Delete Family *(Admin)*
+`DELETE /api/admin/families/:id`
+
+**Response** `204 No Content`
+
+---
+
 ### Meals
 
 #### Create Meal *(Protected – family ADMIN)*

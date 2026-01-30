@@ -327,6 +327,19 @@ export class FamilyService {
   }
 
   /**
+   * Delete family (Hard delete)
+   */
+  async deleteFamily(id: string, userId: string): Promise<void> {
+    // Check if user is ADMIN
+    await this.checkFamilyRole(id, userId, ['ADMIN']);
+
+    // Hard delete
+    await db.delete(families).where(eq(families.id, id));
+
+    await cacheDel(this.familyDetailsCacheKey(id));
+  }
+
+  /**
    * Helper: Check if user has required role in family
    */
   private async checkFamilyRole(familyId: string, userId: string, allowedRoles: string[]): Promise<void> {

@@ -1,22 +1,16 @@
 import {
   ArrowRight,
-  DollarSign,
-  Plus,
-  Timer,
   X,
 } from 'lucide-react'
 
-import type { Dispatch, SetStateAction } from 'react'
 import { getAvatarSrc, type AvatarId } from '@/assets/avatars'
 import type { UserSuggestion } from '@/api/user.service'
 import { Autocomplete } from '@/components/ui/autocomplete'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { PreferenceSlider } from './PreferenceSlider'
 import { AvatarPickerCompact } from '@/components/AvatarPickerCompact'
-import { DietaryRestrictionsChips } from '@/components/DietaryRestrictionsChips'
-import { COMMON_CUISINES } from '@/constants/cuisines'
+
 
 type CreateFamilyDialogProps = {
   open: boolean
@@ -28,18 +22,7 @@ type CreateFamilyDialogProps = {
   setFamilyName: (name: string) => void
   familyAvatarId: AvatarId
   setFamilyAvatarId: (id: AvatarId) => void
-  selectedCuisines: string[]
-  setSelectedCuisines: Dispatch<SetStateAction<string[]>>
-  customCuisine: string
-  setCustomCuisine: (value: string) => void
-  showCustomCuisine: boolean
-  setShowCustomCuisine: (show: boolean) => void
-  selectedDietary: string[]
-  setSelectedDietary: Dispatch<SetStateAction<string[]>>
-  maxBudget: number
-  setMaxBudget: (value: number) => void
-  maxPrepTime: number
-  setMaxPrepTime: (value: number) => void
+
   userQuery: string
   setUserQuery: (value: string) => void
   suggestions: UserSuggestion[]
@@ -60,18 +43,7 @@ export function CreateFamilyDialog({
   setFamilyName,
   familyAvatarId,
   setFamilyAvatarId,
-  selectedCuisines,
-  setSelectedCuisines,
-  customCuisine,
-  setCustomCuisine,
-  showCustomCuisine,
-  setShowCustomCuisine,
-  selectedDietary,
-  setSelectedDietary,
-  maxBudget,
-  setMaxBudget,
-  maxPrepTime,
-  setMaxPrepTime,
+
   userQuery,
   setUserQuery,
   suggestions,
@@ -89,7 +61,7 @@ export function CreateFamilyDialog({
             <DialogTitle className="family-create-title" style={{ fontFamily: 'var(--font-family-display)' }}>
               {step === 1 ? 'Create Family' : step === 2 ? 'Preferences' : 'Invite Members'}
             </DialogTitle>
-            <div className="family-create-subtitle">Step {step} of 3</div>
+            <div className="family-create-subtitle">Step {step} of 2</div>
           </div>
           <DialogClose>
             <Button variant="ghost" size="icon" aria-label="Close">
@@ -129,108 +101,19 @@ export function CreateFamilyDialog({
               </Button>
             </div>
           </>
-        ) : step === 2 ? (
-          <>
-            <div className="p-5 space-y-5 overflow-y-auto flex-1">
-              <div className="space-y-5">
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold text-foreground">Cuisine Preferences</div>
-                  </div>
 
-                  <div className="flex flex-wrap gap-2 pref-chip-group">
-                    {COMMON_CUISINES.map(({ id, label, icon }) => {
-                      const selected = selectedCuisines.includes(label)
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedCuisines((prev) =>
-                              prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
-                            )
-                          }}
-                          className={`pref-chip ${selected ? 'pref-chip--selected' : ''}`}
-                        >
-                          <span className="pref-chip__icon" aria-hidden="true">
-                            {icon}
-                          </span>
-                          {label}
-                        </button>
-                      )
-                    })}
-                    <button type="button" className="pref-chip pref-chip--more" onClick={() => setShowCustomCuisine(true)}>
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      More
-                    </button>
-                  </div>
+	        ) : (
+	          <>
+	            <div className="p-5 space-y-4 overflow-y-auto flex-1 bg-muted/20">
+	              <div className="text-center space-y-2 mb-4">
+	                <h3 className="text-base font-semibold">Invite Family Members</h3>
+	              </div>
 
-                  {showCustomCuisine ? (
-                    <Input
-                      value={customCuisine}
-                      onChange={(e) => setCustomCuisine(e.target.value)}
-                      placeholder="Add cuisines (comma-separated)"
-                      className="text-sm"
-                    />
-                  ) : null}
-                </section>
-
-                <DietaryRestrictionsChips 
-                  selected={selectedDietary} 
-                  onChange={setSelectedDietary} 
-                />
-
-                <div className="pref-divider" aria-hidden="true" />
-
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold text-foreground">Budget & Prep Time</div>
-                  <div className="pref-sliders">
-                    <PreferenceSlider
-                      label="Max Budget"
-                      icon={<DollarSign className="h-4 w-4" />}
-                      value={maxBudget}
-                      onChange={setMaxBudget}
-                      min={10}
-                      max={100}
-                      step={5}
-                      valueText={`$${maxBudget}/meal`}
-                      scaleLabels={['$10', '$50', '$100+']}
-                    />
-
-                    <PreferenceSlider
-                      label="Max Prep Time"
-                      icon={<Timer className="h-4 w-4" />}
-                      value={maxPrepTime}
-                      onChange={setMaxPrepTime}
-                      min={15}
-                      max={120}
-                      step={15}
-                      valueText={`${maxPrepTime} mins`}
-                      scaleLabels={['15m', '60m', '2h+']}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-border p-5">
-              <Button className="w-full family-create-cta" size="lg" onClick={() => setStep(3)}>
-                Continue <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              <div className="text-center space-y-2 mb-4">
-                <h3 className="text-base font-semibold">Invite Family Members</h3>
-              </div>
-
-              <section className="space-y-3">
-                <Autocomplete
-                  value={userQuery}
-                  onChange={setUserQuery}
-                  onSelect={(opt) => {
+	              <section className="space-y-3 rounded-2xl border border-border bg-card/60 p-4 shadow-sm">
+	                <Autocomplete
+	                  value={userQuery}
+	                  onChange={setUserQuery}
+	                  onSelect={(opt) => {
                     const s = suggestions.find((u) => u.id === opt.id)
                     if (s) onInviteMember(s)
                   }}
@@ -254,18 +137,18 @@ export function CreateFamilyDialog({
                   emptyMessage={userQuery.length >= 2 ? 'No users found' : 'Type at least 2 characters'}
                 />
 
-                {invitedMembers.length > 0 ? (
-                  <div className="space-y-2 mt-4">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {invitedMembers.length} {invitedMembers.length === 1 ? 'member' : 'members'} invited
-                    </div>
+	                {invitedMembers.length > 0 ? (
+	                  <div className="space-y-2 mt-4">
+	                    <div className="text-sm font-medium text-muted-foreground ml-1">
+	                      {invitedMembers.length} {invitedMembers.length === 1 ? 'member' : 'members'} invited
+	                    </div>
                     {invitedMembers.map((m) => (
-                      <div key={m.id} className="invite-row">
-                        <div className="invite-row__left">
+                      <div key={m.id} className="invite-row bg-muted/40 border-muted rounded-xl p-2 transition-colors hover:bg-muted/60">
+                        <div className="invite-row__left flex items-center gap-3">
                           <img
                             src={getAvatarSrc(m.avatarId)}
                             alt=""
-                            className="h-10 w-10 rounded-full border border-border object-cover"
+                            className="h-10 w-10 rounded-full border border-border object-cover bg-background"
                             loading="lazy"
                           />
                           <div className="min-w-0">
@@ -276,7 +159,7 @@ export function CreateFamilyDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9"
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
                           onClick={() => onRemoveMember(m.id)}
                           aria-label={`Remove ${m.displayName}`}
                         >
@@ -284,16 +167,16 @@ export function CreateFamilyDialog({
                         </Button>
                       </div>
                     ))}
-                    <div className="text-xs text-muted-foreground pt-2">
-                      Invites will be sent by email when available.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    No members invited yet. You can skip this step and invite members later.
-                  </div>
-                )}
-              </section>
+	                    <div className="text-xs text-muted-foreground pt-2 text-center">
+	                      Invites will be sent by email when available.
+	                    </div>
+	                  </div>
+	                ) : (
+	                  <div className="text-center rounded-xl border border-border bg-muted/30 py-8 px-6 text-sm text-muted-foreground">
+	                    No members invited yet. You can skip this step and invite members later.
+	                  </div>
+	                )}
+	              </section>
             </div>
 
             <div className="border-t border-border p-5 space-y-2">
@@ -304,11 +187,11 @@ export function CreateFamilyDialog({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(1)}
                 className="w-full text-muted-foreground"
                 disabled={isCreating}
               >
-                Back to Preferences
+                Back
               </Button>
             </div>
           </>

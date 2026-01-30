@@ -50,7 +50,8 @@ export interface FamilySettings {
 }
 
 export interface CreateFamilyMemberInvite {
-  userId: string;
+  userId?: string;
+  username?: string;
   role: FamilyRole;
   email?: string;
 }

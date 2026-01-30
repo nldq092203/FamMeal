@@ -73,4 +73,8 @@ export const adminFamilyService = {
   async removeMember(familyId: string, memberId: string): Promise<void> {
     await apiClient.delete(`/admin/families/${familyId}/members/${memberId}`);
   },
+
+  async deleteFamily(familyId: string): Promise<void> {
+    await apiClient.delete(`/admin/families/${familyId}`);
+  },
 };

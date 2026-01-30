@@ -10,6 +10,19 @@ import { requireFamilyAdmin } from '@/middleware/rbac.middleware';
 export async function familyAdminRoutes(app: FastifyInstance) {
   const controller = new FamilyController();
 
+  // DELETE /admin/families/:id - Delete family
+  app.delete('/:id', {
+    preHandler: [requireFamilyAdmin],
+    schema: {
+      params: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+        },
+      },
+    },
+  }, controller.deleteFamily.bind(controller));
+
   // PATCH /admin/families/:id - Update family (legacy: profile + settings)
   app.patch('/:id', {
     preHandler: [requireFamilyAdmin],
