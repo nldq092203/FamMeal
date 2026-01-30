@@ -21,7 +21,7 @@ export const mealService = {
     mealType: MealType;
     constraints?: MealConstraints;
   }): Promise<Meal> {
-    const response = await apiClient.post<ApiResponse<Meal>>('/meals', data);
+    const response = await apiClient.post<ApiResponse<Meal>>('/admin/meals', data);
     return unwrapApiResponse(response.data);
   },
 
@@ -66,7 +66,7 @@ export const mealService = {
   },
 
   async deleteMeal(id: string): Promise<void> {
-    await apiClient.delete(`/meals/${id}`);
+    await apiClient.delete(`/admin/meals/${id}`);
   },
 
   // Proposals

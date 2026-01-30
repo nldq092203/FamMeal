@@ -403,7 +403,7 @@ Or:
 
 ### Meals
 
-#### Create Meal *(Admin)*
+#### Create Meal *(Protected – family ADMIN)*
 `POST /api/admin/meals`
 
 **Request:**

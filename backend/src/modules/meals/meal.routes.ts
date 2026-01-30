@@ -12,6 +12,8 @@ export async function mealRoutes(app: FastifyInstance) {
   const voteController = new VoteController();
   const idParamSchema = z.object({ id: z.string().uuid() });
 
+
+
   // List meals
   app.get(
     '/',
