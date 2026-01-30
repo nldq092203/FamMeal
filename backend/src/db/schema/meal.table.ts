@@ -1,7 +1,6 @@
 import {
   pgTable,
   uuid,
-  date,
   jsonb,
   timestamp,
   index,
@@ -24,7 +23,7 @@ export const meals = pgTable(
       .references(() => families.id, { onDelete: 'cascade' }),
 
     // Meal identity
-    scheduledFor: date('scheduled_for').notNull(),
+    scheduledFor: timestamp('scheduled_for').notNull(),
     mealType: mealTypeEnum('meal_type')
       .notNull()
       .default('DINNER'),
@@ -36,6 +35,7 @@ export const meals = pgTable(
 
     // Constraints defined by admin (before proposals)
     constraints: jsonb('constraints').$type<{
+      isDiningOut?: boolean;
       maxBudget?: number;
       maxPrepTimeMinutes?: number;
       dietaryRestrictions?: string[];

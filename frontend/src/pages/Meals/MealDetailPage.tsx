@@ -7,7 +7,7 @@ import { useMealSummaryQuery } from '@/query/hooks/useMealSummaryQuery'
 import { useFamily } from '@/context/FamilyContext'
 import { useState } from 'react'
 import { AddProposalDialog } from './components/AddProposalDialog'
-import { MEAL_TYPE_LABELS, MEAL_TYPE_TIMES } from './constants'
+import { MEAL_TYPE_LABELS } from './constants'
 import { getAvatarSrc } from '@/assets/avatars'
 import { useAuth } from '@/context/AuthContext'
 import { EditProposalDialog } from './components/EditProposalDialog'
@@ -22,6 +22,23 @@ import { useToast } from '@/context/ToastContext'
 import { getApiErrorMessage } from '@/api/error'
 import { useCloseVotingMutation, useReopenVotingMutation } from '@/query/hooks/useAdminMealMutations'
 import type { Proposal } from '@/types'
+
+function parseMealDateTime(value?: string) {
+  if (!value) return null
+  // If backend sends YYYY-MM-DD (legacy), parse as local date to avoid timezone shifts.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T00:00:00`)
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+function formatMealTime(value?: string) {
+  if (!value) return null
+  // If only a date was provided, treat time as unknown.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
 
 function formatEndsIn(votingClosedAt: string) {
   const now = new Date()
@@ -79,22 +96,26 @@ export default function MealDetailPage() {
     )
   }
 
-  const meal = summary.meal
-  const proposals = summary.proposals || []
-  const mealDate = new Date(meal.date || meal.scheduledFor || new Date())
-  const votingOpen = meal.status === 'PLANNING' && (!meal.votingClosedAt || new Date(meal.votingClosedAt) > new Date())
-  const canEditProposals = meal.status === 'PLANNING' && (!meal.votingClosedAt || new Date(meal.votingClosedAt) > new Date())
-  
-  const currentFamily = families.find(f => f.id === familyId)
-  const memberCount = currentFamily?.memberCount
-  
-  // Get default time for meal type
-  const mealTime = MEAL_TYPE_TIMES[meal.mealType] || '12:00 PM'
-  const endsInText = votingOpen && meal.votingClosedAt ? formatEndsIn(meal.votingClosedAt) : null
-  
-  // Determine voting status for rankings
-  const hasVotes = proposals.some(p => p.voteStats.voteCount > 0)
-  const votingStatus: 'active' | 'closed' | 'no-votes' = 
+	  const meal = summary.meal
+	  const proposals = summary.proposals || []
+	  const mealDate =
+	    parseMealDateTime(meal.scheduledFor) ??
+	    parseMealDateTime(meal.date) ??
+	    new Date()
+	  const votingOpen = meal.status === 'PLANNING' && (!meal.votingClosedAt || new Date(meal.votingClosedAt) > new Date())
+	  const canEditProposals = meal.status === 'PLANNING' && (!meal.votingClosedAt || new Date(meal.votingClosedAt) > new Date())
+	  const isDiningOut = Boolean(meal.constraints?.isDiningOut)
+	  
+	  const currentFamily = families.find(f => f.id === familyId)
+	  const memberCount = currentFamily?.memberCount
+	  
+	  // Get time for meal
+	  const mealTime = formatMealTime(meal.scheduledFor ?? meal.date) ?? 'Pending'
+	  const endsInText = votingOpen && meal.votingClosedAt ? formatEndsIn(meal.votingClosedAt) : null
+	  
+	  // Determine voting status for rankings
+	  const hasVotes = proposals.some(p => p.voteStats.voteCount > 0)
+	  const votingStatus: 'active' | 'closed' | 'no-votes' = 
     !hasVotes ? 'no-votes' : 
     votingOpen ? 'active' : 'closed'
   const showRankings = proposals.length > 0 // Show rankings even without votes to encourage voting
@@ -195,20 +216,36 @@ export default function MealDetailPage() {
               <div className="mt-6 pt-5 border-t border-border/70">
                 <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Constraints</div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  {meal.constraints.isDiningOut ? (
+                    <Badge
+                      variant="outline"
+                      className="rounded-full bg-blue-500/10 text-foreground border-blue-500/25 px-3 py-1"
+                    >
+                      Dining out
+                    </Badge>
+                  ) : null}
                   {meal.constraints.maxBudget ? (
                     <Badge
                       variant="outline"
                       className="rounded-full bg-primary/10 text-foreground border-primary/25 px-3 py-1"
                     >
-                      <span className="mr-1">$</span>Under ${meal.constraints.maxBudget}
+                      {isDiningOut ? `Up to €${meal.constraints.maxBudget}/person` : `Under $${meal.constraints.maxBudget}`}
                     </Badge>
                   ) : null}
-                  {meal.constraints.maxPrepTime ? (
+                  {meal.constraints.maxPrepTime || meal.constraints.maxPrepTimeMinutes ? (
                     <Badge
                       variant="outline"
                       className="rounded-full bg-accent/15 text-foreground border-accent/30 px-3 py-1"
                     >
-                      <Timer className="h-3.5 w-3.5 mr-1.5" /> Max {meal.constraints.maxPrepTime}m
+                      <Timer className="h-3.5 w-3.5 mr-1.5" /> Max {meal.constraints.maxPrepTime ?? meal.constraints.maxPrepTimeMinutes}m
+                    </Badge>
+                  ) : null}
+                  {meal.constraints.servings ? (
+                    <Badge
+                      variant="outline"
+                      className="rounded-full bg-muted text-foreground border-border/70 px-3 py-1"
+                    >
+                      {meal.constraints.servings} {isDiningOut ? 'participants' : 'servings'}
                     </Badge>
                   ) : null}
                   {meal.constraints.dietaryRestrictions?.map((r: string) => (
@@ -352,6 +389,7 @@ export default function MealDetailPage() {
             open={showAddProposal}
             onOpenChange={setShowAddProposal}
             mealId={id}
+            isDiningOut={isDiningOut}
             onSuccess={() => setShowAddProposal(false)}
           />
         )}
@@ -365,6 +403,7 @@ export default function MealDetailPage() {
             }}
             mealId={id}
             proposal={editingProposal}
+            isDiningOut={isDiningOut}
           />
         )}
 
@@ -470,12 +509,23 @@ export default function MealDetailPage() {
 
         <EditMealDialog open={showEditMeal} onOpenChange={setShowEditMeal} meal={meal} />
 
-        <Dialog open={showDeleteMeal} onOpenChange={setShowDeleteMeal}>
+        <Dialog
+          open={showDeleteMeal}
+          onOpenChange={(open) => {
+            if (deleteMealMutation.isPending) return
+            setShowDeleteMeal(open)
+          }}
+        >
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle>Delete meal?</DialogTitle>
               <DialogClose>
-                <Button variant="ghost" size="icon" aria-label="Close delete dialog">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close delete dialog"
+                  disabled={deleteMealMutation.isPending}
+                >
                   ✕
                 </Button>
               </DialogClose>
@@ -492,7 +542,10 @@ export default function MealDetailPage() {
                 className="w-full"
                 disabled={deleteMealMutation.isPending}
                 onClick={async () => {
-                  if (!id) return
+                  if (!id) {
+                    toast.error('Missing meal id.')
+                    return
+                  }
                   try {
                     await deleteMealMutation.mutateAsync({ mealId: id })
                     toast.success('Meal deleted.')

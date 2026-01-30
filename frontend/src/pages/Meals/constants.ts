@@ -10,15 +10,7 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
   OTHER: 'Other',
 }
 
-// Default times for each meal type (in 24-hour format for form inputs)
-export const MEAL_TYPE_TIMES: Record<MealType, string> = {
-  BREAKFAST: '08:00',
-  BRUNCH: '10:30',
-  LUNCH: '12:00',
-  DINNER: '18:00',
-  SNACK: '15:00',
-  OTHER: '12:00',
-}
+
 
 // Emoji icons for each meal type
 export const MEAL_TYPE_ICONS: Record<MealType, string> = {

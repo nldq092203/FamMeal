@@ -534,7 +534,13 @@ Or:
   "dishName": "Pho",
   "ingredients": "Noodles, broth...",
   "notes": "No peanuts",
-  "extra": { "imageUrls": ["https://..."] }
+  "extra": {
+    "imageUrls": ["https://..."],
+    "restaurant": {
+      "name": "Pho 79",
+      "addressUrl": "https://maps.google.com/?q=Pho+79"
+    }
+  }
 }
 ```
 

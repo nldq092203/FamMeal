@@ -11,5 +11,6 @@ export function useMealSummaryQuery(mealId: string | null | undefined) {
       if (!mealId) throw new Error('Missing mealId')
       return mealService.getMealSummary(mealId)
     },
+    retry: false, // Don't retry if it fails (e.g. 404 deleted)
   })
 }

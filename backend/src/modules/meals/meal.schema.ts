@@ -18,6 +18,7 @@ function normalizeDateOnlyInput(value: unknown): unknown {
  * Meal constraints schema
  */
 const mealConstraintsSchema = z.object({
+  isDiningOut: z.boolean().optional(),
   maxBudget: z.number().positive().optional(),
   dietaryRestrictions: z.array(z.string()).optional(),
   maxPrepTime: z.number().positive().optional(),
@@ -35,7 +36,7 @@ const dateOnlySchema = z.preprocess(
  */
 export const createMealSchema = z.object({
   familyId: z.string().uuid(),
-  scheduledFor: dateOnlySchema,
+  scheduledFor: z.string().datetime(), // ISO 8601 datetime
   mealType: z.enum(mealTypeEnum.enumValues).optional().default('DINNER'),
   constraints: mealConstraintsSchema.optional(),
 });
@@ -44,7 +45,7 @@ export const createMealSchema = z.object({
  * Schema for updating a meal (status, constraints, etc.)
  */
 export const updateMealSchema = z.object({
-  scheduledFor: dateOnlySchema.optional(),
+  scheduledFor: z.string().datetime().optional(),
   mealType: z.enum(mealTypeEnum.enumValues).optional(),
   constraints: mealConstraintsSchema.optional(),
 });
@@ -54,8 +55,8 @@ export const updateMealSchema = z.object({
  */
 export const listMealsQuerySchema = z.object({
   familyId: z.string().uuid(),
-  startDate: dateOnlySchema.optional(),
-  endDate: dateOnlySchema.optional(),
+  startDate: z.union([z.string().datetime(), dateOnlySchema]).optional(),
+  endDate: z.union([z.string().datetime(), dateOnlySchema]).optional(),
   status: z.enum(mealStatusEnum.enumValues).optional(),
 });
 

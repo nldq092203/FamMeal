@@ -11,7 +11,10 @@ export function useCreateProposalMutation() {
       dishName: string
       ingredients?: string
       notes?: string
-      extra?: { imageUrls: string[] }
+      extra?: {
+        imageUrls?: string[]
+        restaurant?: { name: string; addressUrl?: string }
+      }
     }) => {
       return mealService.createProposal(input.mealId, {
         dishName: input.dishName,

@@ -39,6 +39,7 @@ export default function ProposalDetailPage() {
 
   const meal = mealSummaryQuery.data?.meal
   const allProposals = proposals ?? []
+  const isDiningOut = Boolean(meal?.constraints?.isDiningOut)
   
   // Determine if current user is the proposal owner
   const isOwner = Boolean(user?.id) && proposal?.userId === user?.id
@@ -51,7 +52,7 @@ export default function ProposalDetailPage() {
     : null
     
   const estimatedCost = meal?.constraints?.maxBudget 
-    ? `${meal.constraints.maxBudget}` 
+    ? `${isDiningOut ? '€' : '$'}${meal.constraints.maxBudget}${isDiningOut ? '/person' : ''}` 
     : null
 
   if (!mealId || proposalQuery.isLoading || mealSummaryQuery.isLoading) {
@@ -218,6 +219,24 @@ export default function ProposalDetailPage() {
             <span className="text-muted-foreground text-sm">({voteCount})</span>
           </div>
         </div>
+
+        {/* Restaurant Info (Dining out) */}
+        {proposal.extra?.restaurant?.name ? (
+          <div className="px-4 py-4 border-b">
+            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Restaurant</div>
+            <div className="mt-1 font-semibold">{proposal.extra.restaurant.name}</div>
+            {proposal.extra.restaurant.addressUrl ? (
+              <a
+                href={proposal.extra.restaurant.addressUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-block text-sm text-primary underline underline-offset-4"
+              >
+                Open in Google Maps
+              </a>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Current Ranking Display - Shows position among top proposals */}
         <div className="px-4 py-6 bg-card/50">

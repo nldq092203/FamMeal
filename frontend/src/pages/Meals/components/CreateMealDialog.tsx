@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X, ArrowRight, ArrowLeft, DollarSign, Clock } from 'lucide-react'
+import { X, ArrowRight, ArrowLeft, DollarSign, Clock, Users, Plus } from 'lucide-react'
 import { DietaryRestrictionsChips } from '@/components/DietaryRestrictionsChips'
 import { CuisinePreferencesChips } from '@/components/CuisinePreferencesChips'
 import { PreferenceSlider } from '@/pages/FamilySelect/components/PreferenceSlider'
@@ -11,7 +11,7 @@ import type { MealConstraints, MealType } from '@/types'
 import { useToast } from '@/context/ToastContext'
 import { getApiErrorMessage } from '@/api/error'
 import { useCreateMealMutation } from '@/query/hooks/useCreateMealMutation'
-import { MEAL_TYPES, MEAL_TYPE_TIMES } from '@/pages/Meals/constants'
+import { MEAL_TYPES } from '@/pages/Meals/constants'
 
 interface CreateMealDialogProps {
   open: boolean
@@ -29,12 +29,13 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
   const [scheduledTime, setScheduledTime] = useState('18:00') // Default to DINNER time (6:00 PM)
   const [mealType, setMealType] = useState<MealType>('DINNER')
 
-  // Auto-update time when meal type changes
-  useEffect(() => {
-    setScheduledTime(MEAL_TYPE_TIMES[mealType])
-  }, [mealType])
+  // Auto-update time when meal type changes - REMOVED per user request
+  // useEffect(() => {
+  //   setScheduledTime(MEAL_TYPE_TIMES[mealType])
+  // }, [mealType])
 
   // Step 2: Constraints (optional)
+  const [isDiningOut, setIsDiningOut] = useState(false)
   const [maxBudget, setMaxBudget] = useState(50)
   const [maxPrepTime, setMaxPrepTime] = useState(60)
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([])
@@ -43,15 +44,18 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
 
   const handleCreate = async () => {
     try {
-      const scheduledFor = scheduledDate
+      // Construct ISO 8601 datetime string (Local -> UTC)
+      const dateTimeString = `${scheduledDate}T${scheduledTime}`
+      const scheduledFor = new Date(dateTimeString).toISOString()
       
-      const constraints: MealConstraints = {
-        maxBudget,
-        maxPrepTime,
-        dietaryRestrictions: dietaryRestrictions.length > 0 ? dietaryRestrictions : undefined,
-        cuisinePreferences: cuisinePreferences.length > 0 ? cuisinePreferences : undefined,
-        servings: servings ? parseInt(servings) : undefined,
-      }
+	      const constraints: MealConstraints = {
+	        isDiningOut,
+	        maxBudget,
+	        maxPrepTimeMinutes: isDiningOut ? undefined : maxPrepTime,
+	        dietaryRestrictions: dietaryRestrictions.length > 0 ? dietaryRestrictions : undefined,
+	        cuisinePreferences: cuisinePreferences.length > 0 ? cuisinePreferences : undefined,
+	        servings: servings ? parseInt(servings) : undefined,
+	      }
 
       await createMealMutation.mutateAsync({
         familyId,
@@ -73,6 +77,7 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
     setScheduledDate('')
     setScheduledTime('12:00')
     setMealType('DINNER')
+    setIsDiningOut(false)
     setMaxBudget(50)
     setMaxPrepTime(60)
     setDietaryRestrictions([])
@@ -85,7 +90,7 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
     onOpenChange(open)
   }
 
-  const canProceedToStep2 = scheduledDate && mealType
+  const canProceedToStep2 = scheduledDate && scheduledTime && mealType
   const today = new Date().toISOString().split('T')[0]
   const isCreating = createMealMutation.isPending
 
@@ -135,9 +140,8 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
                   <Input
                     type="time"
                     value={scheduledTime}
-                    readOnly
-                    className="w-32 cursor-not-allowed opacity-75"
-                    title="Time is automatically set based on meal type"
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="w-32"
                   />
                 </div>
               </div>
@@ -178,75 +182,162 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
           </>
         ) : (
           <>
-            <div className="p-5 space-y-6 overflow-y-auto flex-1">
-              {/* Cuisine Preferences */}
-              <CuisinePreferencesChips
-                selected={cuisinePreferences}
-                onChange={setCuisinePreferences}
-              />
-
-              {/* Dietary Restrictions */}
-              <DietaryRestrictionsChips
-                selected={dietaryRestrictions}
-                onChange={setDietaryRestrictions}
-              />
-
-              <div className="pref-divider" aria-hidden="true" />
-
-              {/* Budget & Prep Time Sliders */}
-              <div className="space-y-3">
-                <div className="text-sm font-semibold text-foreground">Budget & Prep Time</div>
-                <div className="pref-sliders">
-                  <PreferenceSlider
-                    label="Max Budget"
-                    icon={<DollarSign className="h-4 w-4" />}
-                    value={maxBudget}
-                    onChange={setMaxBudget}
-                    min={10}
-                    max={100}
-                    step={5}
-                    valueText={`$${maxBudget}/meal`}
-                    scaleLabels={['$10', '$50', '$100+']}
+            {/* Step 2 Header with Dining Out Toggle - Overrides standard header title logic for step 2 */}
+            <div className="px-5 pt-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold uppercase tracking-wider ${isDiningOut ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Dining Out
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDiningOut}
+                  onClick={() => setIsDiningOut(!isDiningOut)}
+                  className={`
+                    relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
+                    ${isDiningOut ? 'bg-primary' : 'bg-input'}
+                  `}
+                >
+                  <span
+                    className={`
+                      inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                      ${isDiningOut ? 'translate-x-6' : 'translate-x-1'}
+                    `}
                   />
-                  <PreferenceSlider
-                    label="Max Prep Time"
-                    icon={<Clock className="h-4 w-4" />}
-                    value={maxPrepTime}
-                    onChange={setMaxPrepTime}
-                    min={15}
-                    max={120}
-                    step={15}
-                    valueText={`${maxPrepTime} mins`}
-                    scaleLabels={['15m', '60m', '2h+']}
-                  />
-                </div>
-              </div>
-
-              {/* Servings */}
-              <div className="space-y-3">
-                <Label htmlFor="servings" className="text-sm font-semibold">
-                  Servings (Optional)
-                </Label>
-                <Input
-                  id="servings"
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={servings}
-                  onChange={(e) => setServings(e.target.value)}
-                  placeholder="4"
-                />
+                </button>
               </div>
             </div>
 
-            <div className="border-t border-border p-5">
+            <div className="p-5 space-y-5 overflow-y-auto flex-1 bg-muted/20">
+              
+              {/* Chips Section */}
+              <div className="space-y-4">
+                <CuisinePreferencesChips
+                  selected={cuisinePreferences}
+                  onChange={setCuisinePreferences}
+                />
+                <DietaryRestrictionsChips
+                  selected={dietaryRestrictions}
+                  onChange={setDietaryRestrictions}
+                />
+              </div>
+
+              {/* Budget Card */}
+              <div className="bg-card rounded-xl p-4 shadow-sm border border-border/50 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-foreground font-semibold">
+                     <DollarSign className="h-4 w-4 text-muted-foreground" />
+                     <span>Max Budget</span>
+                  </div>
+                  <span className="font-bold text-lg">
+                    {isDiningOut ? '€' : '$'}{maxBudget}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      /{isDiningOut ? 'person' : 'meal'}
+                    </span>
+                  </span>
+                </div>
+                <PreferenceSlider
+                  label=""
+                  icon={null} // Icon handled in header
+                  value={maxBudget}
+                  onChange={setMaxBudget}
+                  min={10}
+                  max={100}
+                  step={5}
+                  valueText="" // Handled in header
+                  scaleLabels={
+                    isDiningOut ? ['€10', '€50', '€100+'] : ['$10', '$50', '$100+']
+                  }
+                  hideHeader // We built our own header
+                />
+              </div>
+
+              {/* Prep Time Card (Only if not dining out) */}
+              {!isDiningOut && (
+                <div className="bg-card rounded-xl p-4 shadow-sm border border-border/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-foreground font-semibold">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>Max Prep Time</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 bg-muted/50 rounded-lg p-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-md hover:bg-white shadow-sm"
+                      onClick={() => setMaxPrepTime(Math.max(15, maxPrepTime - 15))}
+                      disabled={maxPrepTime <= 15}
+                    >
+                      <span className="text-lg font-medium leading-none mb-0.5">-</span>
+                    </Button>
+                    <span className="font-semibold w-16 text-center tabular-nums">
+                      {maxPrepTime} min
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-md hover:bg-white shadow-sm"
+                      onClick={() => setMaxPrepTime(Math.min(180, maxPrepTime + 15))}
+                      disabled={maxPrepTime >= 180}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Servings / Family Size Card */}
+              <div className="bg-card rounded-xl p-4 shadow-sm border border-border/50 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-foreground font-semibold">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span>{isDiningOut ? 'Participants' : 'Family Size'}</span>
+                </div>
+                
+                <div className="flex items-center gap-3 bg-muted/50 rounded-lg p-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-md hover:bg-white shadow-sm"
+                    onClick={() => {
+                      const current = parseInt(servings) || 4;
+                      setServings(Math.max(1, current - 1).toString());
+                    }}
+                    disabled={(parseInt(servings) || 4) <= 1}
+                  >
+                    <span className="text-lg font-medium leading-none mb-0.5">-</span>
+                  </Button>
+                  <span className="font-semibold w-8 text-center tabular-nums">
+                    {servings}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-md hover:bg-white shadow-sm"
+                    onClick={() => {
+                      const current = parseInt(servings) || 4;
+                      setServings(Math.min(20, current + 1).toString());
+                    }}
+                    disabled={(parseInt(servings) || 4) >= 20}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="border-t border-border p-5 bg-background">
               <Button
-                className="w-full family-create-cta"
+                className="w-full family-create-cta h-12 text-base shadow-lg hover:shadow-xl transition-shadow"
                 size="lg"
                 onClick={handleCreate}
                 disabled={isCreating}
               >
-                {isCreating ? 'Creating…' : 'Create Meal'}
+                {isCreating ? 'Creating…' : 'Create Meal Plan'}
               </Button>
             </div>
           </>

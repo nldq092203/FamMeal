@@ -12,7 +12,10 @@ export function useUpdateProposalMutation() {
       dishName?: string
       ingredients?: string
       notes?: string
-      extra?: { imageUrls: string[] }
+      extra?: {
+        imageUrls?: string[]
+        restaurant?: { name: string; addressUrl?: string }
+      }
     }) => {
       const { proposalId, mealId, ...patch } = input
       void mealId

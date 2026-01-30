@@ -56,12 +56,12 @@ export const mealService = {
   async updateMeal(
     id: string,
     data: {
-      scheduledFor?: string;
+      scheduledFor?: string; // ISO 8601 timestamp
       mealType?: MealType;
       constraints?: MealConstraints;
     }
   ): Promise<Meal> {
-    const response = await apiClient.patch<ApiResponse<Meal>>(`/meals/${id}`, data);
+    const response = await apiClient.patch<ApiResponse<Meal>>(`/admin/meals/${id}`, data);
     return unwrapApiResponse(response.data);
   },
 
@@ -76,7 +76,10 @@ export const mealService = {
       dishName: string;
       ingredients?: string;
       notes?: string;
-      extra?: { imageUrls: string[] };
+      extra?: {
+        imageUrls?: string[];
+        restaurant?: { name: string; addressUrl?: string };
+      };
     }
   ): Promise<Proposal> {
     const response = await apiClient.post<ApiResponse<Proposal>>(
@@ -97,7 +100,10 @@ export const mealService = {
       dishName?: string;
       ingredients?: string;
       notes?: string;
-      extra?: { imageUrls: string[] };
+      extra?: {
+        imageUrls?: string[];
+        restaurant?: { name: string; addressUrl?: string };
+      };
     }
   ): Promise<Proposal> {
     const response = await apiClient.patch<ApiResponse<Proposal>>(`/proposals/${id}`, data);

@@ -14,7 +14,7 @@ import { CreateMealDialog } from './components/CreateMealDialog'
 import type { AvatarId } from '@/assets/avatars'
 import { getAvatarSrc } from '@/assets/avatars'
 import type { Family, Meal, MealSummary, MealType } from '@/types'
-import { MEAL_TYPE_LABELS, MEAL_TYPE_TIMES } from './constants'
+import { MEAL_TYPE_LABELS } from './constants'
 import { formatLocalDateParam } from '@/query/format'
 import { useMealsQuery } from '@/query/hooks/useMealsQuery'
 import { useMealSummaryQuery } from '@/query/hooks/useMealSummaryQuery'
@@ -439,9 +439,7 @@ export default function MealsPage() {
                                     <h3 className="text-base font-semibold text-foreground">
                                       {MEAL_TYPE_LABELS[mealType]}
                                     </h3>
-                                    <span className="text-xs text-muted-foreground">
-                                      {MEAL_TYPE_TIMES[mealType]}
-                                    </span>
+
                                   </div>
                                 </div>
 

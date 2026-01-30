@@ -15,18 +15,19 @@ export class MealService {
     await checkFamilyRole(userId, data.familyId, 'ADMIN');
 
     // 3. Check for duplicates (same family, date, type)
+    const scheduledDate = new Date(data.scheduledFor);
     const [existingMeal] = await db
       .select()
       .from(meals)
       .where(and(
         eq(meals.familyId, data.familyId),
-        eq(meals.scheduledFor, data.scheduledFor),
+        eq(meals.scheduledFor, scheduledDate),
         eq(meals.mealType, data.mealType)
       ));
 
     if (existingMeal) {
       throw new ConflictError(
-        `A ${data.mealType} is already planned for ${data.scheduledFor} for this family`
+        `A ${data.mealType} is already planned for ${data.scheduledFor} by this family`
       );
     }
 
@@ -35,7 +36,7 @@ export class MealService {
       .insert(meals)
       .values({
         familyId: data.familyId,
-        scheduledFor: data.scheduledFor,
+        scheduledFor: scheduledDate,
         mealType: data.mealType,
         constraints: data.constraints || {},
         status: 'PLANNING',
@@ -80,11 +81,19 @@ export class MealService {
     const conditions = [eq(meals.familyId, query.familyId)];
 
     if (query.startDate) {
-      conditions.push(gte(meals.scheduledFor, query.startDate));
+      // Allow for both ISO datetime strings and YYYY-MM-DD strings
+      // If valid ISO string, Date constructor handles it.
+      const dateVal = new Date(query.startDate);
+      conditions.push(gte(meals.scheduledFor, dateVal));
     }
 
     if (query.endDate) {
-      conditions.push(lte(meals.scheduledFor, query.endDate));
+      let dateVal = new Date(query.endDate);
+      // If input looks like YYYY-MM-DD (length 10), assume end of day intent
+      if (typeof query.endDate === 'string' && query.endDate.length === 10) {
+         dateVal.setHours(23, 59, 59, 999);
+      }
+      conditions.push(lte(meals.scheduledFor, dateVal));
     }
 
     if (query.status) {
@@ -114,12 +123,20 @@ export class MealService {
       throw new ForbiddenError('Cannot update a completed meal');
     }
 
+    const { scheduledFor, ...restData } = data;
+
+    const updateData: Partial<typeof meals.$inferInsert> = {
+      ...restData,
+      updatedAt: new Date(),
+    };
+    
+    if (scheduledFor) {
+      updateData.scheduledFor = new Date(scheduledFor);
+    }
+
     const [updatedMeal] = await db
       .update(meals)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(meals.id, id))
       .returning();
 
@@ -139,13 +156,8 @@ export class MealService {
     // Only family ADMIN can delete meals
     await checkFamilyRole(userId, meal.familyId, 'ADMIN');
 
-    // Soft delete
-    await db
-      .update(meals)
-      .set({
-        deletedAt: new Date(),
-      })
-      .where(eq(meals.id, id));
+    // Hard delete
+    await db.delete(meals).where(eq(meals.id, id));
   }
 
   /**

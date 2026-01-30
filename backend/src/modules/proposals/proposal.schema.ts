@@ -4,7 +4,13 @@ import { z } from 'zod';
  * Extra metadata schema - simplified for MVP
  */
 const extraSchema = z.object({
-  imageUrls: z.array(z.string().url()),
+  imageUrls: z.array(z.string().url()).optional().default([]),
+  restaurant: z
+    .object({
+      name: z.string().min(1, 'Restaurant name is required'),
+      addressUrl: z.string().url('Restaurant addressUrl must be a valid URL'),
+    })
+    .optional(),
 });
 
 /**

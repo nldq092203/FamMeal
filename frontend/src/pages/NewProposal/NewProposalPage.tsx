@@ -19,6 +19,8 @@ const NewProposalPage: React.FC = () => {
     dishName: '',
     ingredients: '',
     notes: '',
+    restaurantName: '',
+    restaurantLink: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,12 +30,31 @@ const NewProposalPage: React.FC = () => {
       return;
     }
     try {
+      const trimmedRestaurantName = formData.restaurantName.trim()
+      const trimmedRestaurantLink = formData.restaurantLink.trim()
+      if ((trimmedRestaurantName || trimmedRestaurantLink) && !trimmedRestaurantName) {
+        toast.error('Restaurant name is required when adding restaurant info.')
+        return
+      }
+
+      const extra: {
+        imageUrls?: string[]
+        restaurant?: { name: string; addressUrl?: string }
+      } = {}
+
+      if (trimmedRestaurantName) {
+        extra.restaurant = {
+          name: trimmedRestaurantName,
+          addressUrl: trimmedRestaurantLink ? trimmedRestaurantLink : undefined,
+        }
+      }
+
       await createProposalMutation.mutateAsync({
         mealId,
         dishName: formData.dishName,
         ingredients: formData.ingredients || undefined,
         notes: formData.notes || undefined,
-        extra: { imageUrls: [] },
+        extra: Object.keys(extra).length > 0 ? extra : undefined,
       });
       toast.success('Proposal submitted.');
       navigate(`/meals/${mealId}/vote`);
@@ -127,6 +148,29 @@ const NewProposalPage: React.FC = () => {
               value={formData.notes}
               onChange={handleChange}
               rows={4}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="restaurantName" className="form-label">
+              Restaurant (optional)
+            </label>
+            <Input
+              type="text"
+              id="restaurantName"
+              name="restaurantName"
+              placeholder="e.g., Pho 79"
+              value={formData.restaurantName}
+              onChange={handleChange}
+            />
+            <Input
+              type="url"
+              id="restaurantLink"
+              name="restaurantLink"
+              placeholder="Google Maps link (optional)"
+              value={formData.restaurantLink}
+              onChange={handleChange}
+              className="mt-2"
             />
           </div>
 

@@ -81,6 +81,7 @@ export type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK' | 'BRUNCH' | '
 export type MealStatus = 'PLANNING' | 'LOCKED' | 'COMPLETED';
 
 export interface MealConstraints {
+  isDiningOut?: boolean;
   maxBudget?: number;
   maxPrepTime?: number;
   maxPrepTimeMinutes?: number;
@@ -121,7 +122,11 @@ export interface Proposal {
   ingredients?: string;
   notes?: string;
   extra?: {
-    imageUrls: string[];
+    imageUrls?: string[];
+    restaurant?: {
+      name: string;
+      addressUrl?: string;
+    };
   };
   createdAt?: string;
   updatedAt?: string;

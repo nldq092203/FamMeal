@@ -41,7 +41,10 @@ export class ProposalService {
           dishName: data.dishName,
           ingredients: data.ingredients,
           notes: data.notes,
-          extra: data.extra || { imageUrls: [] },
+          extra: {
+            imageUrls: [],
+            ...(data.extra ?? {}),
+          },
         })
         .returning();
 

@@ -29,9 +29,10 @@ interface EditProposalDialogProps {
   onOpenChange: (open: boolean) => void
   mealId: string
   proposal: Proposal | null
+  isDiningOut?: boolean
 }
 
-export function EditProposalDialog({ open, onOpenChange, mealId, proposal }: EditProposalDialogProps) {
+export function EditProposalDialog({ open, onOpenChange, mealId, proposal, isDiningOut }: EditProposalDialogProps) {
   const toast = useToast()
   const updateProposal = useUpdateProposalMutation()
 
@@ -41,8 +42,17 @@ export function EditProposalDialog({ open, onOpenChange, mealId, proposal }: Edi
       ingredients: parseCommaList(proposal?.ingredients),
       notes: parseLineList(proposal?.notes),
       imageUrl: proposal?.extra?.imageUrls?.[0] ?? '',
+      restaurantName: proposal?.extra?.restaurant?.name ?? '',
+      restaurantUrl: proposal?.extra?.restaurant?.addressUrl ?? '',
     }
-  }, [proposal?.dishName, proposal?.extra?.imageUrls, proposal?.ingredients, proposal?.notes])
+  }, [
+    proposal?.dishName,
+    proposal?.extra?.imageUrls,
+    proposal?.extra?.restaurant?.name,
+    proposal?.extra?.restaurant?.addressUrl,
+    proposal?.ingredients,
+    proposal?.notes,
+  ])
 
   const [dishName, setDishName] = useState(initial.dishName)
   const [ingredients, setIngredients] = useState<string[]>(initial.ingredients)
@@ -50,6 +60,8 @@ export function EditProposalDialog({ open, onOpenChange, mealId, proposal }: Edi
   const [notes, setNotes] = useState<string[]>(initial.notes)
   const [noteInput, setNoteInput] = useState('')
   const [imageUrl, setImageUrl] = useState(initial.imageUrl)
+  const [restaurantName, setRestaurantName] = useState(initial.restaurantName)
+  const [restaurantUrl, setRestaurantUrl] = useState(initial.restaurantUrl)
 
   useEffect(() => {
     if (!open) return
@@ -59,7 +71,9 @@ export function EditProposalDialog({ open, onOpenChange, mealId, proposal }: Edi
     setNotes(initial.notes)
     setNoteInput('')
     setImageUrl(initial.imageUrl)
-  }, [initial.dishName, initial.imageUrl, initial.ingredients, initial.notes, open])
+    setRestaurantName(initial.restaurantName)
+    setRestaurantUrl(initial.restaurantUrl)
+  }, [initial.dishName, initial.imageUrl, initial.ingredients, initial.notes, initial.restaurantName, initial.restaurantUrl, open])
 
   const handleSubmit = async () => {
     if (!proposal) return
@@ -68,16 +82,39 @@ export function EditProposalDialog({ open, onOpenChange, mealId, proposal }: Edi
       return
     }
 
+    const trimmedRestaurantName = restaurantName.trim()
+    const trimmedRestaurantUrl = restaurantUrl.trim()
+    const shouldShowRestaurantFields = Boolean(isDiningOut) || Boolean(initial.restaurantName || initial.restaurantUrl)
+
+    if (shouldShowRestaurantFields && (trimmedRestaurantName || trimmedRestaurantUrl) && !trimmedRestaurantName) {
+      toast.error('Restaurant name is required when adding restaurant info.')
+      return
+    }
+
     try {
       const ingredientsText = ingredients.length > 0 ? ingredients.join(', ') : undefined
       const notesText = notes.length > 0 ? notes.join('\n') : undefined
+
+      const extra: {
+        imageUrls?: string[]
+        restaurant?: { name: string; addressUrl?: string }
+      } = {}
+
+      if (imageUrl.trim()) extra.imageUrls = [imageUrl.trim()]
+      if (shouldShowRestaurantFields && trimmedRestaurantName) {
+        extra.restaurant = {
+          name: trimmedRestaurantName,
+          addressUrl: trimmedRestaurantUrl ? trimmedRestaurantUrl : undefined,
+        }
+      }
+
       await updateProposal.mutateAsync({
         proposalId: proposal.id,
         mealId,
         dishName: dishName.trim(),
         ingredients: ingredientsText,
         notes: notesText,
-        extra: imageUrl.trim() ? { imageUrls: [imageUrl.trim()] } : undefined,
+        extra: Object.keys(extra).length > 0 ? extra : undefined,
       })
       toast.success('Proposal updated.')
       onOpenChange(false)
@@ -111,6 +148,11 @@ export function EditProposalDialog({ open, onOpenChange, mealId, proposal }: Edi
           setDishName={setDishName}
           imageUrl={imageUrl}
           setImageUrl={setImageUrl}
+          showRestaurantFields={Boolean(isDiningOut) || Boolean(initial.restaurantName || initial.restaurantUrl)}
+          restaurantName={restaurantName}
+          setRestaurantName={setRestaurantName}
+          restaurantUrl={restaurantUrl}
+          setRestaurantUrl={setRestaurantUrl}
           ingredients={ingredients}
           setIngredients={setIngredients}
           ingredientInput={ingredientInput}

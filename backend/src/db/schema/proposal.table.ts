@@ -26,6 +26,10 @@ export const proposals = pgTable(
     // Extra metadata
     extra: jsonb('extra').$type<{
       imageUrls: string[];
+      restaurant?: {
+        name: string;
+        addressUrl: string;
+      };
     }>(),
     
     createdAt: timestamp('created_at').defaultNow().notNull(),

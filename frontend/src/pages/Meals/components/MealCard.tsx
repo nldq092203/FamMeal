@@ -19,8 +19,10 @@ interface MealCardProps {
     cookUserId?: string
     cookName?: string
     constraints?: {
+      isDiningOut?: boolean
       maxBudget?: number
       maxPrepTime?: number
+      maxPrepTimeMinutes?: number
       servings?: number
       dietaryRestrictions?: string[]
       cuisinePreferences?: string[]
@@ -40,6 +42,8 @@ function isOutdatedMeal(scheduledFor?: string): boolean {
 }
 
 export function MealCard({ meal, onClick }: MealCardProps) {
+  const isDiningOut = Boolean(meal.constraints?.isDiningOut)
+  const maxPrepMinutes = meal.constraints?.maxPrepTime ?? meal.constraints?.maxPrepTimeMinutes
   // Determine dynamic status text
   const getStatusText = () => {
     if (meal.status === 'PLANNING') {
@@ -159,12 +163,12 @@ export function MealCard({ meal, onClick }: MealCardProps) {
                 <div className={`flex flex-wrap gap-1.5 transition-opacity ${isOutdated ? 'opacity-60' : ''}`}>
                   {meal.constraints.maxBudget && (
                     <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                      ${meal.constraints.maxBudget}
+                      {isDiningOut ? `€${meal.constraints.maxBudget}/person` : `$${meal.constraints.maxBudget}`}
                     </Badge>
                   )}
-                  {meal.constraints.maxPrepTime && (
+                  {maxPrepMinutes && (
                     <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
-                      {meal.constraints.maxPrepTime}m
+                      {maxPrepMinutes}m
                     </Badge>
                   )}
                   {meal.constraints.cuisinePreferences?.map((cuisine) => (
@@ -325,17 +329,17 @@ export function MealCard({ meal, onClick }: MealCardProps) {
             <div className={`flex flex-wrap gap-1.5 transition-opacity ${isCompleted || isOutdated ? 'opacity-60' : ''}`}>
               {meal.constraints?.maxBudget && (
                 <Badge variant="secondary" className="text-xs font-medium bg-green-50 text-green-700">
-                  ${meal.constraints.maxBudget}
+                  {isDiningOut ? `€${meal.constraints.maxBudget}/person` : `$${meal.constraints.maxBudget}`}
                 </Badge>
               )}
-              {meal.constraints?.maxPrepTime && (
+              {maxPrepMinutes && (
                 <Badge variant="secondary" className="text-xs font-medium bg-orange-50 text-orange-700">
-                  {meal.constraints.maxPrepTime}m
+                  {maxPrepMinutes}m
                 </Badge>
               )}
               {meal.constraints?.servings && (
                 <Badge variant="secondary" className="text-xs font-medium bg-blue-50 text-blue-700">
-                  {meal.constraints.servings} servings
+                  {meal.constraints.servings} {isDiningOut ? 'participants' : 'servings'}
                 </Badge>
               )}
               {meal.status === 'LOCKED' && !isCompleted && (
