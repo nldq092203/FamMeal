@@ -113,7 +113,7 @@ export function AddProposalDialog({
       <DialogContent className="overflow-hidden max-h-[85vh] flex flex-col family-create-dialog">
         <DialogHeader className="family-create-header">
           <div className="flex items-center justify-between gap-3">
-            <DialogClose asChild>
+            <DialogClose>
               <Button variant="ghost" size="icon" aria-label="Close">
                 <X className="h-5 w-5" />
               </Button>
