@@ -335,12 +335,12 @@ export default function MealsPage() {
             <AdminOnly>
               <Button
                 size="icon"
-                variant="outline"
-                className="hidden lg:inline-flex h-11 w-11 rounded-full border-2 border-dashed border-primary/40 bg-gradient-to-br from-primary/15 to-accent/20 hover:from-primary/20 hover:to-accent/25 hover:border-primary/60 shadow-sm"
+                className="hidden lg:inline-flex h-11 w-11 rounded-full shadow-md hover:shadow-lg transition-shadow"
                 onClick={() => setShowCreateMeal(true)}
                 aria-label="Create Meal"
+                title="Create a new meal"
               >
-                <Plus className="h-5 w-5 text-primary" />
+                <Plus className="h-6 w-6 text-white" />
               </Button>
             </AdminOnly>
 
@@ -564,12 +564,12 @@ export default function MealsPage() {
             >
               <Button
                 size="icon"
-                variant="outline"
-                className="h-12 w-12 rounded-full border-2 border-dashed border-primary/40 bg-gradient-to-br from-primary/15 to-accent/20 hover:from-primary/20 hover:to-accent/25 hover:border-primary/60 shadow-sm"
+                className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow"
                 onClick={() => setShowCreateMeal(true)}
                 aria-label="Create Meal"
+                title="Create a new meal"
               >
-                <Plus className="h-5 w-5 text-primary" />
+                <Plus className="h-8 w-8 text-white" />
               </Button>
             </div>
           </div>
