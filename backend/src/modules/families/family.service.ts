@@ -270,6 +270,15 @@ export class FamilyService {
         });
       }
 
+      // Notify the new member that they have been added to the family
+      const notificationService = new NotificationService(tx as unknown as typeof db);
+      await notificationService.createForUser({
+        userId: userToAdd.id,
+        familyId,
+        type: NotificationType.WELCOME_FAMILY,
+        refId: familyId,
+      });
+
       await cacheDel(this.familyDetailsCacheKey(familyId));
       return {
         ...newMember,

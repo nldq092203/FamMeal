@@ -20,11 +20,13 @@ Rule: do not write to `notifications` directly; all inbox writes go through `Not
 | `MEMBER_JOINED` | 3 | New member joins | Existing family members (optionally exclude the new member) | `member_id` or `family_id` |
 | `REMINDER` | 4 | Scheduled reminder fires | All family members | `meal_id` |
 | `COOK_ASSIGNED` | 5 | Cook assigned to meal | Assigned user only | `meal_id` |
+| `WELCOME_FAMILY` | 6 | Member added to family | New member only | `family_id` |
 
 ## Where notifications are triggered (current integration)
 
 - `MEAL_PROPOSAL`: `src/modules/proposals/proposal.service.ts` after proposal creation (fanout to family members except author)
 - `MEMBER_JOINED`: `src/modules/families/family.service.ts` after adding a member (fanout to existing members excluding the new member)
+- `WELCOME_FAMILY`: `src/modules/families/family.service.ts` after adding a member (notify the new member)
 - `MEAL_FINALIZED` + `COOK_ASSIGNED`: `src/modules/meals/meal.admin.service.ts` after finalizing a meal (fanout to all members + notify the cook)
 - `REMINDER`: `workers/notification-scheduler/scheduler.ts` (worker fans out due scheduled rows)
 
