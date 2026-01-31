@@ -47,7 +47,10 @@ export function useAddFamilyMemberMutation() {
     mutationFn: async (input: { familyId: string; email?: string; username?: string; role: FamilyRole }) =>
       adminFamilyService.addMember(input.familyId, { email: input.email, username: input.username, role: input.role }),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.families.byId(variables.familyId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.families.byId(variables.familyId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.families.list() }),
+      ])
     },
   })
 }
@@ -58,7 +61,10 @@ export function useRemoveFamilyMemberMutation() {
     mutationFn: async (input: { familyId: string; memberId: string }) =>
       adminFamilyService.removeMember(input.familyId, input.memberId),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.families.byId(variables.familyId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.families.byId(variables.familyId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.families.list() }),
+      ])
     },
   })
 }

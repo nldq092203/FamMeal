@@ -64,6 +64,8 @@ function notificationUi(type: NotificationTypeId, refId: string): NotificationUi
       return { icon: AlarmClock, title: 'Reminder', description: 'It’s time to plan your meal.', href: `/meals/${refId}` }
     case 5:
       return { icon: ChefHat, title: 'You’re the cook', description: 'You’ve been assigned as cook for a meal.', href: `/meals/${refId}` }
+    case 6:
+      return { icon: UserPlus, title: 'Welcome to the family', description: 'You’ve been added to a family.', href: '/family' }
     default:
       return { icon: Bell, title: 'Notification', description: 'You have a new update.', href: '/history' }
   }

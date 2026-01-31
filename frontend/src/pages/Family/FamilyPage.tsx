@@ -6,6 +6,7 @@ import { useFamily } from '@/context/FamilyContext'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { AdminOnly } from '@/components/PermissionGate'
+import { Autocomplete } from '@/components/ui/autocomplete'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,13 +21,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getAvatarSrc } from '@/assets/avatars'
 import { formatCuisinePreferenceLabel } from '@/constants/cuisinePreferences'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { EditFamilyDialog } from './EditFamilyDialog'
 import { EditPreferencesDialog } from './EditPreferencesDialog'
 import { PageHeader, PageShell } from '@/components/Layout'
+import type { UserSuggestion } from '@/api/user.service'
 import {
   useAddFamilyMemberMutation,
   useDeleteFamilyMutation,
@@ -34,6 +36,8 @@ import {
   useUpdateFamilyProfileMutation,
   useUpdateFamilySettingsMutation,
 } from '@/query/hooks/useFamilyMutations'
+import { useUserLookupQuery } from '@/query/hooks/useUserLookupQuery'
+import { useUserSuggestionsQuery } from '@/query/hooks/useUserSuggestionsQuery'
 
 /**
  * Family page - Family & Circle Management
@@ -58,6 +62,12 @@ export default function FamilyPage() {
   const addMemberMutation = useAddFamilyMemberMutation()
   const removeMemberMutation = useRemoveFamilyMemberMutation()
   const deleteFamilyMutation = useDeleteFamilyMutation()
+  const userLookupQuery = useUserLookupQuery(inviteTarget)
+  const debouncedInviteTarget = useDebouncedValue(inviteTarget, 350)
+  const { data: inviteSuggestions = [], isFetching: isSearchingInvite } = useUserSuggestionsQuery(
+    debouncedInviteTarget,
+    { minLength: 2 }
+  )
 
   const members =
     family?.members?.map((m) => ({
@@ -117,11 +127,44 @@ export default function FamilyPage() {
     setInviteTarget('')
   }
 
+  const addMemberForSuggestion = async (suggestion: UserSuggestion) => {
+    if (!family?.id) return
+    if (role !== 'ADMIN') {
+      toast.error('Only admins can add members.')
+      setShowInviteDialog(false)
+      return
+    }
+
+    if (members.some((m) => m.userId === suggestion.id)) {
+      toast.error('This user is already a member of this family.')
+      return
+    }
+
+    const payload =
+      suggestion.email && suggestion.email.includes('@')
+        ? { email: suggestion.email, username: undefined as string | undefined }
+        : { email: undefined as string | undefined, username: suggestion.username }
+
+    try {
+      await addMemberMutation.mutateAsync({
+        familyId: family.id,
+        email: payload.email,
+        username: payload.username,
+        role: 'MEMBER',
+      })
+      toast.success('Member added.')
+      resetInviteForm()
+      setShowInviteDialog(false)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to add member.'))
+    }
+  }
+
   const handleInviteMember = async (e: FormEvent) => {
     e.preventDefault()
     if (!family?.id) return
     if (role !== 'ADMIN') {
-      toast.error('Only admins can invite members.')
+      toast.error('Only admins can add members.')
       setShowInviteDialog(false)
       return
     }
@@ -132,21 +175,20 @@ export default function FamilyPage() {
       return
     }
 
-    const isEmail = target.includes('@')
-
+    let match: UserSuggestion | null = null
     try {
-      await addMemberMutation.mutateAsync({
-        familyId: family.id,
-        email: isEmail ? target : undefined,
-        username: isEmail ? undefined : target,
-        role: 'MEMBER',
-      })
-      toast.success('Invite sent.')
-      resetInviteForm()
-      setShowInviteDialog(false)
+      const lookup = await userLookupQuery.refetch()
+      match = lookup.data?.match ?? null
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to invite member.'))
+      toast.error(getApiErrorMessage(err, 'Failed to check user.'))
+      return
     }
+
+    if (!match) {
+      toast.error('No user found with that username or email.')
+      return
+    }
+    await addMemberForSuggestion(match)
   }
 
   const openMemberActions = (memberId: string) => {
@@ -404,7 +446,7 @@ export default function FamilyPage() {
                 className="w-full gap-2 h-10 text-sm border-dashed border-2"
               >
                 <UserPlus className="h-4 w-4" />
-                Add Family Member
+                Add Member
               </Button>
             </AdminOnly>
           </div>
@@ -445,9 +487,9 @@ export default function FamilyPage() {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Invite Member</DialogTitle>
+              <DialogTitle>Add Member</DialogTitle>
               <DialogClose>
-                <Button variant="ghost" size="icon" aria-label="Close invite dialog">
+                <Button variant="ghost" size="icon" aria-label="Close add member dialog">
                   ✕
                 </Button>
               </DialogClose>
@@ -457,18 +499,48 @@ export default function FamilyPage() {
               <form className="space-y-4" onSubmit={handleInviteMember}>
                 <div className="space-y-2">
                   <Label htmlFor="invite-target">Username or Email</Label>
-                  <Input
+                  <Autocomplete
                     id="invite-target"
                     value={inviteTarget}
-                    onChange={(e) => setInviteTarget(e.target.value)}
-                    placeholder="username or name@example.com"
+                    onChange={setInviteTarget}
+                    onSelect={(opt) => {
+                      const s = inviteSuggestions.find((u) => u.id === opt.id)
+                      if (!s) return
+                      addMemberForSuggestion(s).catch(() => undefined)
+                    }}
+                    options={inviteSuggestions
+                      .filter((s) => !members.some((m) => m.userId === s.id))
+                      .map((s) => ({
+                        id: s.id,
+                        label: s.displayName,
+                        subtitle: s.email ?? `@${s.username}`,
+                        icon: (
+                          <img
+                            src={getAvatarSrc(s.avatarId)}
+                            alt=""
+                            className="h-8 w-8 rounded-full border border-border object-cover"
+                            loading="lazy"
+                          />
+                        ),
+                      }))}
+                    isLoading={isSearchingInvite}
+                    placeholder="Search by username or email…"
+                    emptyMessage={inviteTarget.trim().length >= 2 ? 'No users found' : 'Type at least 2 characters'}
                     disabled={addMemberMutation.isPending}
                   />
                   <p className="text-xs text-muted-foreground">We’ll match either a username or an email.</p>
                 </div>
 
-                <Button className="w-full" type="submit" disabled={addMemberMutation.isPending}>
-                  {addMemberMutation.isPending ? 'Sending…' : 'Send invite'}
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={addMemberMutation.isPending || userLookupQuery.isFetching}
+                >
+                  {addMemberMutation.isPending
+                    ? 'Adding…'
+                    : userLookupQuery.isFetching
+                      ? 'Checking…'
+                      : 'Add Member'}
                 </Button>
               </form>
             </div>

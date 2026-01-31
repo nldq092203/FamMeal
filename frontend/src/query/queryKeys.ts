@@ -9,6 +9,7 @@ export const queryKeys = {
   users: {
     all: ['users'] as const,
     suggestions: (query: string) => [...queryKeys.users.all, 'suggestions', query] as const,
+    lookup: (target: string) => [...queryKeys.users.all, 'lookup', target] as const,
   },
   meals: {
     all: ['meals'] as const,
