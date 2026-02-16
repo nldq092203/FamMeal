@@ -2,7 +2,7 @@
 
 **Rebalancing meal decision-making responsibility in families**
 
-A modern REST API built with Node.js, TypeScript, Fastify, and PostgreSQL to help families share the mental load of meal planning.
+A modern REST API built with Node.js, TypeScript, and PostgreSQL to help families share the mental load of meal planning.
 
 ## 🎯 Context
 

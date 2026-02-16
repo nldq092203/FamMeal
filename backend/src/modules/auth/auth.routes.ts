@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { AuthController } from './auth.controller';
-import { registerSchema, loginSchema, refreshTokenSchema } from './auth.schema';
+import { registerSchema, loginSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema } from './auth.schema';
 import { authMiddleware } from '@/middleware/auth.middleware.js';
 
 export async function authRoutes(app: FastifyInstance) {
@@ -27,6 +27,20 @@ export async function authRoutes(app: FastifyInstance) {
       body: zodToJsonSchema(refreshTokenSchema, 'refreshTokenSchema'),
     },
   }, controller.refresh.bind(controller));
+
+  // POST /auth/forgot-password
+  app.post('/forgot-password', {
+    schema: {
+      body: zodToJsonSchema(forgotPasswordSchema, 'forgotPasswordSchema'),
+    },
+  }, controller.forgotPassword.bind(controller));
+
+  // POST /auth/reset-password
+  app.post('/reset-password', {
+    schema: {
+      body: zodToJsonSchema(resetPasswordSchema, 'resetPasswordSchema'),
+    },
+  }, controller.resetPassword.bind(controller));
 
   // GET /auth/me - Protected route (requires auth middleware in app.ts)
   app.get('/me', { preHandler: authMiddleware }, controller.me.bind(controller));

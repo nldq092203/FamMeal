@@ -9,6 +9,8 @@ import { FamilyGate } from '@/components/FamilyGate/FamilyGate'
 import Layout from '@/components/Layout/Layout'
 import LoginPage from '@/pages/Auth/LoginPage'
 import RegisterPage from '@/pages/Auth/RegisterPage'
+import ForgotPasswordPage from '@/pages/Auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/Auth/ResetPasswordPage'
 import FamilySelectPage from '@/pages/FamilySelect/FamilySelectPage'
 import MealsPage from '@/pages/Meals/MealsPage'
 import MealDetailPage from '@/pages/Meals/MealDetailPage'
@@ -39,6 +41,22 @@ function App() {
               element={
                 <PublicOnlyRoute>
                   <RegisterPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicOnlyRoute>
+                  <ForgotPasswordPage />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/reset-password"
+              element={
+                <PublicOnlyRoute>
+                  <ResetPasswordPage />
                 </PublicOnlyRoute>
               }
             />

@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
-import { RegisterInput, LoginInput, RefreshTokenInput } from './auth.schema';
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
 
 export class AuthController {
   private authService: AuthService;
@@ -81,6 +81,44 @@ export class AuthController {
     return reply.send({
       success: true,
       data: profile,
+    });
+  }
+
+  /**
+   * POST /auth/forgot-password - Request password reset
+   */
+  async forgotPassword(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const body = request.body as ForgotPasswordInput;
+    const { resetToken } = await this.authService.forgotPassword(body.email);
+
+    // Always return success to avoid email enumeration
+    return reply.send({
+      success: true,
+      data: {
+        message: 'If an account with that email exists, a reset link has been generated.',
+        ...(resetToken ? { resetToken } : {}),
+      },
+    });
+  }
+
+  /**
+   * POST /auth/reset-password - Reset password using token
+   */
+  async resetPassword(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const body = request.body as ResetPasswordInput;
+    await this.authService.resetPassword(body.token, body.newPassword);
+
+    return reply.send({
+      success: true,
+      data: {
+        message: 'Password has been reset successfully. You can now log in.',
+      },
     });
   }
 }

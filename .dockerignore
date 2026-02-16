@@ -1,0 +1,48 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies (reinstalled inside container)
+**/node_modules
+
+# Build outputs (rebuilt inside container)
+**/dist
+**/build
+
+# Environment files (injected via compose/env)
+**/.env
+**/.env.*
+!**/.env.example
+
+# IDE / Editor
+.vscode
+.idea
+**/*.swp
+**/*.swo
+**/*~
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Docker files (no recursion)
+Dockerfile
+docker-compose*.yml
+
+# Documentation / non-runtime
+**/README.md
+**/docs
+**/*.md
+
+# Test artifacts
+**/coverage
+**/.nyc_output
+
+# Drizzle studio / dev tooling
+**/drizzle/meta
+
+# Misc
+**/*.log
+**/logs
+**/*.pid
+**/*.seed

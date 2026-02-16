@@ -76,6 +76,16 @@ export const authService = {
     return normalizeUser(payload);
   },
 
+  async forgotPassword(email: string): Promise<{ message: string; resetToken?: string }> {
+    const response = await apiClient.post<ApiResponse<{ message: string; resetToken?: string }>>('/auth/forgot-password', { email });
+    return unwrapApiResponse(response.data);
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await apiClient.post<ApiResponse<{ message: string }>>('/auth/reset-password', { token, newPassword });
+    return unwrapApiResponse(response.data);
+  },
+
   logout() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');

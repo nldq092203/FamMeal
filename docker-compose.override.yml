@@ -1,0 +1,64 @@
+# ============================================================
+# FamMeal — Docker Compose Override (DEVELOPMENT)
+# ============================================================
+# This file is automatically loaded by `docker compose up`.
+# It overrides the production settings from docker-compose.yml
+# with dev-friendly configuration (hot reload, bind mounts).
+#
+# To run PRODUCTION-ONLY mode, use:
+#   docker compose -f docker-compose.yml up -d
+# ============================================================
+
+services:
+  # ---- Backend (dev mode with tsx watch) --------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: fammeal-backend-dev
+    environment:
+      NODE_ENV: development
+    # Run migrations on container start so the dev DB always has tables.
+    # `drizzle-orm` tracks applied migrations in the DB, so this is safe to re-run.
+    command: ["sh", "-c", "npm run db:migrate && npm run dev:watch"]
+    volumes:
+      - ./backend/src:/app/src:delegated
+      - ./backend/workers:/app/workers:delegated
+      - ./backend/drizzle:/app/drizzle:delegated
+      - ./backend/drizzle.config.ts:/app/drizzle.config.ts:ro
+      # Prevent host node_modules from overriding container's
+      - /app/node_modules
+
+  # ---- Frontend (dev mode with Vite dev server) -------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: fammeal-frontend-dev
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src:delegated
+      - ./frontend/public:/app/public:delegated
+      - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json:ro
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro
+      - ./frontend/components.json:/app/components.json:ro
+      # Prevent host node_modules from overriding container's
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5173/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

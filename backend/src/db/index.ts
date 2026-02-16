@@ -15,3 +15,4 @@ export * from '@/db/schema/vote.table.js';
 export * from '@/db/schema/notification.table.js';
 export * from '@/db/schema/scheduled-notification.table.js';
 export * from '@/db/schema/cron-state.table.js';
+export * from '@/db/schema/password-reset-token.table.js';

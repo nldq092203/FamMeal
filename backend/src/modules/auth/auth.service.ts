@@ -1,13 +1,17 @@
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { eq } from 'drizzle-orm';
+import { eq, and, gt } from 'drizzle-orm';
 import { db } from '@/db';
 import { users } from '@/db/schema/user.table';
+import { passwordResetTokens } from '@/db/schema/password-reset-token.table';
 import { env } from '@/config/env';
 import { RegisterInput, LoginInput } from './auth.schema';
-import { NotFoundError, ConflictError, UnauthorizedError } from '@/shared/errors';
+import { NotFoundError, ConflictError, UnauthorizedError, ValidationError } from '@/shared/errors';
+import { logger } from '@/shared/logger';
 
 const SALT_ROUNDS = 10;
+const RESET_TOKEN_EXPIRY_MINUTES = 60; // 1 hour
 
 export interface TokenPayload {
   userId: string;
@@ -161,6 +165,78 @@ export class AuthService {
 
     const { deletedAt: _deletedAt, ...safeUser } = user;
     return safeUser;
+  }
+
+  /**
+   * Request a password reset token.
+   * Always returns success to avoid leaking whether the email exists.
+   * The token is stored in the DB — in production you'd email it;
+   * here we return it directly so the frontend can build the reset link.
+   */
+  async forgotPassword(email: string): Promise<{ resetToken: string | null }> {
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email));
+
+    if (!user) {
+      // Don't reveal that the email doesn't exist
+      logger.info({ email }, 'Password reset requested for unknown email');
+      return { resetToken: null };
+    }
+
+    // Generate a cryptographically random token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MINUTES * 60 * 1000);
+
+    await db.insert(passwordResetTokens).values({
+      userId: user.id,
+      token,
+      expiresAt,
+    });
+
+    logger.info({ userId: user.id }, 'Password reset token generated');
+
+    // In a real app you'd send this via email.
+    // For now we return it so the frontend can navigate to /reset-password?token=...
+    return { resetToken: token };
+  }
+
+  /**
+   * Validate a reset token and change the user's password.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const [record] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false),
+          gt(passwordResetTokens.expiresAt, new Date()),
+        ),
+      );
+
+    if (!record) {
+      throw new ValidationError('Reset token is invalid or has expired.');
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // Update user password
+    await db
+      .update(users)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(eq(users.id, record.userId));
+
+    // Mark token as used
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.id, record.id));
+
+    logger.info({ userId: record.userId }, 'Password reset completed');
   }
 
   /**

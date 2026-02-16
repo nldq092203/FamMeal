@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 
 import { getApiErrorMessage } from '@/api/error'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const fromPathname = (location.state as LocationState | null)?.from?.pathname
@@ -65,19 +67,35 @@ const LoginPage: React.FC = () => {
                 <label className="text-sm font-medium" htmlFor="password">
                   Password
                 </label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               <Button className="w-full" size="lg" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Logging in…' : 'Log in'}
               </Button>
+
+              <div className="text-sm text-muted-foreground text-center">
+                <Link className="font-semibold text-primary hover:underline" to="/forgot-password">
+                  Forgot password?
+                </Link>
+              </div>
 
               <div className="text-sm text-muted-foreground text-center">
                 New here?{' '}
