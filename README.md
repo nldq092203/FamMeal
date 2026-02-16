@@ -5,6 +5,8 @@ FamMeal is a family meal planning platform that turns meal decisions into a shar
 
 **Current stack:** React frontend, Node.js backend, PostgreSQL, Redis, Docker Compose.
 
+**UI note:** FamMeal is **mobile-first**. For the best experience on desktop, open your browser's responsive design mode and switch to a mobile viewport.
+
 ## 2. Why This Project Exists (Business Purpose)
 Many households rely on one person to decide and coordinate meals. That creates hidden operational load: repeated decision fatigue, low participation, and conflict around preferences.
 
@@ -281,6 +283,8 @@ Don't want to set up anything locally? The app is already live — jump right in
 👉 **[https://fam-meal-6dno.vercel.app](https://fam-meal-6dno.vercel.app/)**
 
 Create an account, start a family, and explore the full meal planning workflow. Feel free to discover!
+
+Tip: This UI is designed for mobile screens — if you're on a laptop/desktop, try a smaller viewport (mobile mode) for the intended layout.
 
 ---
 
