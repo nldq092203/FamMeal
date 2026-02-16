@@ -132,7 +132,7 @@ stateDiagram-v2
 sequenceDiagram
     participant A as Admin
     participant M as Members
-    participant API as Fastify API
+    participant API as Node.js API
     participant DB as PostgreSQL
     participant N as Notification Service
 
@@ -209,7 +209,7 @@ The backend is the source of truth. The frontend also gates UI actions (for exam
 ### Backend Architecture (diagram + explanation)
 ```mermaid
 flowchart LR
-    Client[Frontend SPA / API Consumers] --> API[Fastify App]
+    Client[Frontend SPA / API Consumers] --> API[Node.js App]
     API --> Auth[Auth Middleware + JWT]
     API --> Users[Users Module]
     API --> Families[Families Module]
@@ -240,7 +240,7 @@ flowchart LR
     Guards --> Ctx[AuthContext + FamilyContext + ToastContext]
     UI --> Query[React Query Hooks]
     Query --> API[Axios API Client]
-    API --> Backend[Fastify API]
+    API --> Backend[Node.js API]
 
     UI --> RBAC[PermissionGate / AdminOnly]
     RBAC --> Ctx
@@ -252,7 +252,7 @@ Frontend is a route-driven SPA with guard layers for authentication and active f
 ```mermaid
 flowchart TB
     User[Developer] --> FE[frontend container\nVite dev or Nginx runner]
-    FE --> BE[backend container\nFastify + migrations on startup]
+    FE --> BE[backend container\nNode.js + migrations on startup]
     BE --> PG[(postgres container)]
     BE --> RD[(redis container)]
 

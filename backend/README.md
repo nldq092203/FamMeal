@@ -328,7 +328,7 @@ To add a new feature module (e.g., `meals`):
 2. **Define schema**: `meals/meal.schema.ts` (Zod schemas)
 3. **Create service**: `meals/meal.service.ts` (business logic + DB)
 4. **Create controller**: `meals/meal.controller.ts` (HTTP handlers)
-5. **Create routes**: `meals/meal.routes.ts` (Fastify routes)
+5. **Create routes**: `meals/meal.routes.ts` (Node.js routes)
 6. **Register in app**: `app.ts` → `app.register(mealRoutes, { prefix: '/api/meals' })`
 
 ## 📊 Database Schema Example
