@@ -256,14 +256,18 @@ flowchart TB
     BE --> PG[(postgres container)]
     BE --> RD[(redis container)]
 
-    subgraph Compose Network
+    subgraph ComposeNetwork[Compose Network]
       FE
       BE
       PG
       RD
     end
 
-    HostPorts[Host Ports\n5173/8080 frontend\n3000 backend\n5432 postgres\n6379 redis] --> Compose Network
+    HostPorts[Host Ports\n5173/8080 frontend\n3000 backend\n5432 postgres\n6379 redis]
+    HostPorts --> FE
+    HostPorts --> BE
+    HostPorts --> PG
+    HostPorts --> RD
 ```
 
 `docker-compose.yml` defines production-like services; `docker-compose.override.yml` enables hot-reload development targets for frontend and backend.
