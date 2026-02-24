@@ -140,16 +140,10 @@ export default function FamilyPage() {
       return
     }
 
-    const payload =
-      suggestion.email && suggestion.email.includes('@')
-        ? { email: suggestion.email, username: undefined as string | undefined }
-        : { email: undefined as string | undefined, username: suggestion.username }
-
     try {
       await addMemberMutation.mutateAsync({
         familyId: family.id,
-        email: payload.email,
-        username: payload.username,
+        userId: suggestion.id,
         role: 'MEMBER',
       })
       toast.success('Member added.')

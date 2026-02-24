@@ -44,8 +44,8 @@ export function useUpdateFamilySettingsMutation() {
 export function useAddFamilyMemberMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { familyId: string; email?: string; username?: string; role: FamilyRole }) =>
-      adminFamilyService.addMember(input.familyId, { email: input.email, username: input.username, role: input.role }),
+    mutationFn: async (input: { familyId: string; userId: string; role: FamilyRole }) =>
+      adminFamilyService.addMember(input.familyId, { userId: input.userId, role: input.role }),
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.families.byId(variables.familyId) }),

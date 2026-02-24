@@ -58,8 +58,7 @@ export const adminFamilyService = {
   async addMember(
     familyId: string,
     data: {
-      username?: string;
-      email?: string;
+      userId: string;
       role: FamilyRole;
     }
   ): Promise<FamilyMember> {
