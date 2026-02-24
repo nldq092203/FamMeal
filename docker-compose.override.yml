@@ -10,23 +10,17 @@
 # ============================================================
 
 services:
-  # ---- Backend (dev mode with tsx watch) --------------------
+  # ---- Backend (dev mode) -----------------------------------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dev
     container_name: fammeal-backend-dev
     environment:
       NODE_ENV: development
-    # Run migrations on container start so the dev DB always has tables.
-    # `drizzle-orm` tracks applied migrations in the DB, so this is safe to re-run.
-    command: ["sh", "-c", "npm run db:migrate && npm run dev:watch"]
+    command: ["node", "src/index.js"]
     volumes:
       - ./backend/src:/app/src:delegated
-      - ./backend/workers:/app/workers:delegated
-      - ./backend/drizzle:/app/drizzle:delegated
-      - ./backend/drizzle.config.ts:/app/drizzle.config.ts:ro
       # Prevent host node_modules from overriding container's
       - /app/node_modules
 
@@ -41,9 +35,9 @@ services:
       backend:
         condition: service_healthy
     environment:
-      VITE_API_BASE_URL: http://localhost:3000/api
+      VITE_API_BASE_URL: http://localhost:3001/api
     ports:
-      - "5173:5173"
+      - "5174:5173"
     volumes:
       - ./frontend/src:/app/src:delegated
       - ./frontend/public:/app/public:delegated
@@ -54,7 +48,6 @@ services:
       - ./frontend/tsconfig.app.json:/app/tsconfig.app.json:ro
       - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:ro
       - ./frontend/components.json:/app/components.json:ro
-      # Prevent host node_modules from overriding container's
       - /app/node_modules
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:5173/ || exit 1"]
