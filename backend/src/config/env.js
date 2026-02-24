@@ -21,7 +21,7 @@ const envSchema = Joi.object({
 const { error, value } = envSchema.validate(process.env, { stripUnknown: false });
 
 if (error) {
-  console.error('❌ Invalid environment variables:', error.message);
+  console.error('Invalid environment variables:', error.message);
   throw new Error('Invalid environment variables');
 }
 
