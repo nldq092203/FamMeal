@@ -13,7 +13,6 @@ describe('Notifications API', () => {
     family = await createTestFamily(admin.accessToken);
     await addFamilyMember(admin.accessToken, family.id, member.userId, 'MEMBER');
 
-    // Seed some notifications for the member
     await Notification.bulkCreate([
       { userId: member.userId, familyId: family.id, type: 1, refId: family.id, isRead: false },
       { userId: member.userId, familyId: family.id, type: 2, refId: family.id, isRead: false },

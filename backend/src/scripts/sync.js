@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { sequelize } = require('../config/database');
-require('../db/models'); // Load all models
+require('../db/models');
 
 async function syncDB() {
   try {
@@ -21,11 +21,9 @@ async function syncDB() {
         await sequelize.query(query);
         console.log(`Pre-sync: Successfully executed cast query.`);
       } catch (e) {
-        // Ignore errors (e.g., if the column is already a varchar or doesn't exist yet)
       }
     }
 
-    // alter: true will update the existing tables to match models
     await sequelize.sync({ alter: true });
     
     console.log('Database sync complete. All tables are up to date.');

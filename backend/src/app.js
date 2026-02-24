@@ -33,8 +33,6 @@ function buildApp() {
     credentials: true,
   }));
 
-  // Allow small images (data URLs) and richer payloads from the frontend.
-  // Keep this below typical serverless limits (e.g. Vercel Node functions).
   app.use(express.json({ limit: '4mb' }));
   app.use(express.urlencoded({ extended: false, limit: '4mb' }));
   app.use(hpp());

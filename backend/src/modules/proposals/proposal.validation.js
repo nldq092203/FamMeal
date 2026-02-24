@@ -3,8 +3,6 @@ const Joi = require('joi');
 const DATA_IMAGE_URI_RE = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/i;
 
 function imageUrlSchema() {
-  // Accept either a normal URL or a data URL (used by the current UI for uploads/previews).
-  // Limit length to reduce accidental huge payloads.
   return Joi.string()
     .max(4_000_000)
     .custom((value, helpers) => {

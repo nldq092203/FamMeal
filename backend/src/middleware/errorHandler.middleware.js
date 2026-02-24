@@ -3,7 +3,6 @@ const { logger } = require('../shared/logger');
 const { env } = require('../config/env');
 
 function errorHandler(err, req, res, _next) {
-  // body-parser / express.json errors (e.g. large payloads, invalid JSON)
   if (err && (err.status === 413 || err.type === 'entity.too.large')) {
     logger.warn('Payload too large', { method: req.method, url: req.url });
     return res.status(413).json({
