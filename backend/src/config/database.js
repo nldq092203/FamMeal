@@ -2,12 +2,14 @@ const { Sequelize } = require('sequelize');
 const { env } = require('./env');
 const { logger } = require('../shared/logger');
 
+const isProduction = env.NODE_ENV === 'production';
+
 const sequelize = new Sequelize(env.DATABASE_URL, {
   dialect: 'postgres',
   logging: env.NODE_ENV === 'development' ? (msg) => logger.debug(msg) : false,
   pool: {
-    min: 2,
-    max: 10,
+    min: isProduction ? 1 : 2,
+    max: isProduction ? 5 : 10,
     idle: 10000,
     acquire: 30000,
   },
@@ -15,6 +17,14 @@ const sequelize = new Sequelize(env.DATABASE_URL, {
     underscored: true,
     timestamps: false,
   },
+  ...(isProduction && {
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
+  }),
 });
 
 const connectDatabase = async () => {

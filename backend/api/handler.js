@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+require('pg');
+
 require('../src/db/models');
 
 const { buildApp } = require('../src/app');
