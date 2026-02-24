@@ -1,22 +1,85 @@
 # FamMeal
 
 ## 1. Project Overview
+
 FamMeal is a family meal planning platform that turns meal decisions into a shared workflow instead of a single-person burden. It combines proposal submission, ranked voting, and admin finalization so families can decide meals transparently and consistently.
 
-**Current stack:** React frontend, Node.js backend, PostgreSQL, Redis, Docker Compose.
+**Stack:** React + TypeScript frontend, Node.js + Express backend, PostgreSQL, Redis, Docker Compose.
 
 **UI note:** FamMeal is **mobile-first**. For the best experience on desktop, open your browser's responsive design mode and switch to a mobile viewport.
 
-## 2. Why This Project Exists (Business Purpose)
+---
+
+## 2. Quick Start — Run the Full Stack in One Command
+
+> **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+```bash
+git clone <repo-url> && cd FamMeal
+make dev
+```
+
+That's it. Docker Compose builds all images, starts PostgreSQL + Redis + backend + frontend with **hot reload**, and runs database schema sync automatically.
+
+| Service  | URL |
+|----------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:3000 |
+| Health check | http://localhost:3000/health |
+
+> No `.env` file needed for Docker — sensible defaults (including development JWT secrets) are baked into `docker-compose.yml`.
+> Only create a root `.env` if you want to override secrets or ports.
+
+### Stop & clean up
+
+```bash
+make down            # stop containers (data preserved)
+make down-volumes    # stop + wipe database and Redis
+make clean           # remove containers, images, and volumes
+```
+
+### Other useful commands
+
+| Command | What it does |
+|---|---|
+| `make prod` | Production-like mode (Nginx frontend at `:8080`, no hot reload) |
+| `make logs` | Tail backend + frontend logs |
+| `make logs-all` | Tail all services including Postgres and Redis |
+| `make ps` | Show running containers and status |
+| `make restart` | Restart all services |
+| `make shell-backend` | Open a shell inside the backend container |
+| `make shell-postgres` | Open a `psql` session |
+| `make migrate` | Run database schema sync manually |
+
+Run `make help` for the complete list.
+
+---
+
+## 3. Live Demo
+
+Don't want to set up anything locally? The app is already live:
+
+👉 **[https://fam-meal-6dno.vercel.app](https://fam-meal-6dno.vercel.app/)**
+
+Create an account, start a family, and explore the full meal planning workflow. Use a mobile viewport for the intended layout.
+
+---
+
+## 4. Why This Project Exists (Business Purpose)
+
 Many households rely on one person to decide and coordinate meals. That creates hidden operational load: repeated decision fatigue, low participation, and conflict around preferences.
 
 FamMeal addresses this by:
 - Distributing decision-making across family members.
 - Capturing preferences and constraints (diet, budget, prep time) in structured form.
-- Converting subjective discussion into a repeatable decision flow: propose -> rank -> finalize -> notify.
+- Converting subjective discussion into a repeatable decision flow: **propose → rank → finalize → notify**.
 
-## 3. Business Logic (Domain Rules and Decision Flow)
-### Domain model (high level)
+---
+
+## 5. Business Logic (Domain Rules and Decision Flow)
+
+### Domain model
+
 - `User`: authenticated person in the system.
 - `Family`: collaboration boundary and settings container.
 - `FamilyMember`: user-family link with role (`ADMIN` or `MEMBER`).
@@ -93,7 +156,8 @@ classDiagram
     Family "1" --> "*" Notification : scopes
 ```
 
-### Core rules implemented in backend
+### Core rules
+
 - Family data is membership-scoped: users must belong to a family to access its meals/proposals/votes/notifications.
 - Meal creation/update/deletion is admin-only.
 - Proposals and votes are allowed only while meal status is `PLANNING`.
@@ -101,6 +165,8 @@ classDiagram
 - Admin finalization is allowed only when meal status is `LOCKED`.
 - Finalization records decision metadata and assigned cook, then emits notifications.
 - Family management (edit family, invite/remove members, delete family) is admin-only.
+
+### Meal state machine
 
 ```mermaid
 stateDiagram-v2
@@ -130,11 +196,12 @@ stateDiagram-v2
 ```
 
 ### Decision flow
+
 ```mermaid
 sequenceDiagram
     participant A as Admin
     participant M as Members
-    participant API as Node.js API
+    participant API as Backend API
     participant DB as PostgreSQL
     participant N as Notification Service
 
@@ -156,62 +223,57 @@ sequenceDiagram
     API->>N: Notify family (meal finalized + cook assigned)
 ```
 
-## 4. Core Functionalities
-- Authentication: register, login, token refresh, current-user lookup.
-- Family workspace: create/select family, view family details, manage members and settings.
-- Meal lifecycle: admin creates meals with constraints.
-- Meal lifecycle: members add/edit/delete own proposals while planning is open.
-- Meal lifecycle: members submit ranked votes.
-- Meal lifecycle: admin closes/reopens voting and finalizes meal.
-- History/notifications: family notification feed with unread count and read-state actions.
-- User profile/account: edit profile and password.
+---
 
-## 5. RBAC (Roles and Permissions Matrix)
-### RBAC framing (how access is actually decided)
-Instead of treating RBAC as a single “role table”, FamMeal’s access control is easiest to reason about as **three layers**:
-- **Authentication**: request must carry a valid JWT (most `/api/*` routes).
-- **Family scope**: user must be a member of the family that owns the resource (meal/proposal/vote/notifications).
-- **Admin scope**: some actions additionally require `ADMIN` within that family.
+## 6. RBAC (Roles and Permissions)
 
-The backend is the source of truth. The frontend also gates UI actions (for example `AdminOnly` / permission helpers), but API enforcement is what matters.
+### How access is decided
+
+FamMeal's access control is three layers:
+
+1. **Authentication**: request must carry a valid JWT.
+2. **Family scope**: user must be a member of the family that owns the resource.
+3. **Admin scope**: some actions additionally require `ADMIN` role within that family.
+
+The backend is the source of truth. The frontend also gates UI actions (e.g. `AdminOnly` / `PermissionGate`), but API enforcement is what matters.
 
 ### Roles
-- `ADMIN`: manages family settings/members and controls meal lifecycle decisions (close/reopen/finalize; create/update/delete meals).
+
+- `ADMIN`: manages family settings/members and controls meal lifecycle (create/update/delete meals, close/reopen/finalize voting).
 - `MEMBER`: participates in proposing and voting within families they belong to.
 
-### Enforcement map (where checks happen)
-- **JWT required** for protected routes: Fastify `authMiddleware` (global hook for protected route group).
-- **Family membership required** for family-scoped reads/writes: checked using family membership (either directly via `familyId` params, or indirectly by resolving meal/proposal to its family).
-- **Family admin required** for admin operations:
-  - Family admin routes: `/api/admin/families/*` use `requireFamilyAdmin` (middleware).
-  - Meal admin operations: `/api/admin/meals/*` are protected and enforced in service layer (`checkFamilyRole(..., 'ADMIN')`).
+### Enforcement map
 
-### Permissions matrix (capabilities, not just pages)
-| Capability | What it means | Scope | ADMIN | MEMBER | Backend enforcement |
-|---|---|---|---:|---:|---|
-| `view_family` | View family details, meals, proposals, votes, notifications | Family | Yes | Yes | Membership checks on family-owned resources |
-| `update_family_preferences` | Update family settings (dietary/cuisine/budget/prep defaults) | Family | Yes | No | `requireFamilyAdmin` / admin role checks |
-| `edit_family_info` | Update family profile (name/avatar) | Family | Yes | No | `requireFamilyAdmin` / admin role checks |
-| `invite_members` | Add a user to the family | Family | Yes | No | `requireFamilyAdmin` / admin role checks |
-| `remove_members` | Remove other members from the family | Family | Yes | No | Admin-only for removing others; self-leave allowed by service rule |
-| `delete_family` | Delete a family | Family | Yes | No | `requireFamilyAdmin` / admin role checks |
-| `create_meal` | Create a meal plan for a family | Family | Yes | No | Service checks admin role (meal admin create) |
-| `update_meal` | Update meal details/constraints | Family | Yes | No | Service checks admin role |
-| `delete_meal` | Delete a meal | Family | Yes | No | Service checks admin role |
-| `create_proposal` | Add a proposal to a meal | Meal (family-owned) | Yes | Yes | Membership + meal must be `PLANNING` |
-| `update_own_proposal` | Edit your own proposal | Meal (family-owned) | Yes | Yes | Ownership + meal must be `PLANNING` |
-| `delete_own_proposal` | Delete your own proposal | Meal (family-owned) | Yes | Yes | Ownership + meal must be `PLANNING` |
-| `vote_on_meal` | Submit ranked votes | Meal (family-owned) | Yes | Yes | Membership + meal must be `PLANNING` + rank uniqueness rules |
-| `override_voting` | Close/reopen voting | Meal (family-owned) | Yes | No | Admin role required |
-| `finalize_meal` | Finalize meal decision + assign cook | Meal (family-owned) | Yes | No | Admin role required + meal must be `LOCKED` |
-| `view_notifications` | Read notifications and unread count | Family | Yes | Yes | Membership + ownership checks on inbox actions |
-| `manage_notifications` | Mark read / mark all read | Family | Yes | Yes | Ownership + family checks (idempotent) |
+- **JWT required**: Express `authMiddleware` (global hook for protected routes).
+- **Family membership**: checked using family membership lookup (directly via `familyId` params, or by resolving meal/proposal to its family).
+- **Family admin**: routes under `/api/admin/*` use `requireFamilyAdmin` middleware; meal admin operations enforce `ADMIN` in the service layer.
 
-## 6. Architecture
-### Backend Architecture (diagram + explanation)
+### Permissions matrix
+
+| Capability | Scope | ADMIN | MEMBER | Backend enforcement |
+|---|---|:---:|:---:|---|
+| View family details, meals, proposals, votes | Family | ✅ | ✅ | Membership check |
+| Update family settings (dietary/cuisine/budget) | Family | ✅ | ❌ | `requireFamilyAdmin` |
+| Edit family info (name/avatar) | Family | ✅ | ❌ | `requireFamilyAdmin` |
+| Invite/remove members | Family | ✅ | ❌ | `requireFamilyAdmin` |
+| Delete family | Family | ✅ | ❌ | `requireFamilyAdmin` |
+| Create/update/delete meal | Family | ✅ | ❌ | Service checks admin role |
+| Create proposal | Meal | ✅ | ✅ | Membership + `PLANNING` status |
+| Update/delete own proposal | Meal | ✅ | ✅ | Ownership + `PLANNING` status |
+| Submit ranked votes | Meal | ✅ | ✅ | Membership + `PLANNING` + rank uniqueness |
+| Close/reopen voting | Meal | ✅ | ❌ | Admin role required |
+| Finalize meal | Meal | ✅ | ❌ | Admin role + `LOCKED` status |
+| View/manage notifications | Family | ✅ | ✅ | Membership + ownership |
+
+---
+
+## 7. Architecture
+
+### Backend
+
 ```mermaid
 flowchart LR
-    Client[Frontend SPA / API Consumers] --> API[Node.js App]
+    Client[Frontend SPA] --> API[Express App]
     API --> Auth[Auth Middleware + JWT]
     API --> Users[Users Module]
     API --> Families[Families Module]
@@ -228,21 +290,20 @@ flowchart LR
     Notifs --> DB
 
     API --> Cache[(Redis Cache)]
-    Scheduler[Notification Scheduler / Cron Endpoints] --> Notifs
-    Scheduler --> DB
 ```
 
-Backend is module-based (`controller -> service -> db`) with Zod validation and centralized error handling. PostgreSQL is the source of truth; Redis is used as optional shared cache and fast-path support.
+Backend is module-based (`controller → service → db`) with Joi validation and centralized error handling. PostgreSQL is the source of truth; Redis is used as optional shared cache.
 
-### Frontend Architecture (diagram + explanation)
+### Frontend
+
 ```mermaid
 flowchart LR
-    UI[React UI Pages] --> Router[React Router]
+    UI[React Pages] --> Router[React Router]
     Router --> Guards[ProtectedRoute / PublicOnlyRoute / FamilyGate]
     Guards --> Ctx[AuthContext + FamilyContext + ToastContext]
     UI --> Query[React Query Hooks]
     Query --> API[Axios API Client]
-    API --> Backend[Node.js API]
+    API --> Backend[Express API]
 
     UI --> RBAC[PermissionGate / AdminOnly]
     RBAC --> Ctx
@@ -250,11 +311,12 @@ flowchart LR
 
 Frontend is a route-driven SPA with guard layers for authentication and active family context. Data flows through React Query hooks and typed API services; role-aware UI behavior is enforced with permission gates.
 
-### Docker Architecture (diagram + explanation)
+### Docker
+
 ```mermaid
 flowchart TB
-    User[Developer] --> FE[frontend container\nVite dev or Nginx runner]
-    FE --> BE[backend container\nNode.js + migrations on startup]
+    User[Developer] --> FE[frontend container\nVite dev or Nginx]
+    FE --> BE[backend container\nNode.js + Express]
     BE --> PG[(postgres container)]
     BE --> RD[(redis container)]
 
@@ -272,146 +334,104 @@ flowchart TB
     HostPorts --> RD
 ```
 
-`docker-compose.yml` defines production-like services; `docker-compose.override.yml` enables hot-reload development targets for frontend and backend.
-
-## 7. Getting Started
-
-### 🌐 Live Demo
-
-Don't want to set up anything locally? The app is already live — jump right in:
-
-👉 **[https://fam-meal-6dno.vercel.app](https://fam-meal-6dno.vercel.app/)**
-
-Create an account, start a family, and explore the full meal planning workflow. Feel free to discover!
-
-Tip: This UI is designed for mobile screens — if you're on a laptop/desktop, try a smaller viewport (mobile mode) for the intended layout.
+`docker-compose.yml` defines production-like services; `docker-compose.override.yml` enables hot-reload development with Vite dev server and source bind-mounts.
 
 ---
 
-### Local Development with Docker
-
-Prefer to run things locally? Everything runs through **Make** — no need to memorize long Docker commands. Just make sure Docker Desktop is running and you're good to go.
-
-### 7.1 First-time setup
-
-Create a `.env` file in the project root with at least these two secrets (pick any random strings, 32+ characters each):
-
-```env
-JWT_ACCESS_SECRET=your-access-secret-at-least-32-chars-long
-JWT_REFRESH_SECRET=your-refresh-secret-at-least-32-chars-long
-```
-
-> Everything else (database URL, Redis, ports) has sensible defaults baked into `docker-compose.yml` — you only need to override them if you want to.
-
-### 7.2 Start the dev environment
-
-```bash
-make dev
-```
-
-That's it! This builds all images, runs database migrations automatically, and starts every service with **hot reload** enabled. You'll see a summary like:
+## 8. Project Structure
 
 ```
-Dev environment started
-   Backend:  http://localhost:3000
-   Frontend: http://localhost:5173
-   Health:   http://localhost:3000/health
+FamMeal/
+├── docker-compose.yml            # Production services
+├── docker-compose.override.yml   # Dev overrides (hot reload, bind mounts)
+├── Makefile                      # All Docker workflow commands
+├── .dockerignore
+├── .gitignore
+│
+├── backend/                      # Node.js + Express REST API
+│   ├── Dockerfile
+│   ├── package.json
+│   ├── .env.example
+│   └── src/
+│       ├── index.js              # Server entry point
+│       ├── app.js                # Express app factory
+│       ├── config/               # Env validation + DB connection
+│       ├── db/models/            # Sequelize models
+│       ├── modules/              # Feature modules (auth, users, families, meals, proposals, votes, notifications)
+│       ├── middleware/           # Auth, RBAC, validation, rate limiting, error handler
+│       ├── shared/               # Logger, errors, cache, async handler
+│       ├── scripts/              # DB sync script
+│       └── __tests__/            # Integration tests (Jest + supertest)
+│
+└── frontend/                     # React + TypeScript SPA (Vite)
+    ├── Dockerfile                # Multi-stage (dev + prod/nginx)
+    ├── nginx.conf
+    ├── package.json
+    └── src/
+        ├── App.tsx               # Routes + layout
+        ├── api/                  # Axios client + service functions
+        ├── query/                # React Query hooks + keys
+        ├── context/              # Auth, Family, Toast contexts
+        ├── stores/               # Zustand stores
+        ├── pages/                # Route page components
+        ├── components/           # Shared UI (Layout, Navigation, Guards, ui/)
+        ├── types/                # TypeScript types
+        └── utils/                # Permissions, session helpers
 ```
 
-> **Production-like mode** (Nginx frontend, no hot reload): run `make prod` instead. The frontend will be available at `http://localhost:8080`.
+---
 
-### 7.3 Stop everything
+## 9. Environment Variables
 
-```bash
-make down            # stop and remove containers (data is preserved)
-make down-volumes    # stop and also wipe database + Redis data
-```
-
-### 7.4 Other handy commands
-
-Run `make help` to see the full list. Here are the most useful ones:
-
-| Command | What it does |
-|---|---|
-| `make restart` | Restart all services |
-| `make restart-backend` | Restart just the backend |
-| `make ps` | Show running containers and their status |
-| `make shell-backend` | Open a shell inside the backend container |
-| `make shell-postgres` | Open a `psql` session against the database |
-| `make migrate` | Run database migrations manually |
-| `make clean` | Nuclear option — removes containers, images, and volumes |
-
-### 7.5 Watching logs
-
-Logs are your best friend when something isn't working. Pick whichever scope you need:
-
-```bash
-make logs            # tail backend + frontend (most common)
-make logs-backend    # backend only
-make logs-frontend   # frontend only
-make logs-all        # everything including Postgres and Redis
-```
-
-All log commands stream in real time (`-f` flag), so you can leave them running in a separate terminal while you work.
-
-> **Tip:** If the backend is crash-looping, check `make logs-backend` first — migration failures or missing env vars will show up there immediately.
-
-### 7.6 Using the app
-
-Once `make dev` is running and healthy:
-
-1. **Open the app** → [http://localhost:5173](http://localhost:5173)
-2. **Create an account** — register with an email, username, and password on the sign-up page.
-3. **Create or join a family** — after logging in you'll be prompted to create a new family workspace or join an existing one.
-4. **Start planning meals** — as an admin, create a meal with constraints (date, dietary prefs, budget). Family members can then propose dishes and submit ranked votes.
-5. **Finalize** — the admin closes voting, reviews the results, picks a winner, assigns a cook, and everyone gets notified.
-
-> **Quick health check:** hit [http://localhost:3000/health](http://localhost:3000/health) — you should get a `200 OK` with status info. If not, check the logs.
-
-## 8. Environment Variables
-
-Below is every variable the stack understands. **Most have defaults** so you only need to set the ones marked _required_.
+Most variables have defaults baked into `docker-compose.yml` — you only need to set secrets if overriding.
 
 ### Backend
 
 | Variable | Required | Default | Notes |
 |---|:---:|---|---|
-| `DATABASE_URL` | — | `postgresql://fammeal:changeme_pg_password@postgres:5432/fammeal` | Auto-set by Docker Compose; override only for external DBs |
-| `JWT_ACCESS_SECRET` | ✅ | — | Random string, min 32 characters |
-| `JWT_REFRESH_SECRET` | ✅ | — | Random string, min 32 characters |
+| `DATABASE_URL` | — | `postgresql://fammeal:changeme_pg_password@postgres:5432/fammeal` | Auto-set by Docker Compose |
+| `JWT_ACCESS_SECRET` | ✅ | Dev default in compose | Random string, min 32 chars |
+| `JWT_REFRESH_SECRET` | ✅ | Dev default in compose | Random string, min 32 chars |
 | `PORT` | — | `3000` | |
-| `HOST` | — | `0.0.0.0` | |
-| `NODE_ENV` | — | `production` (override: `development` in dev) | |
-| `CORS_ORIGIN` | — | `http://localhost:5173,http://localhost:8080,http://localhost:3000` | Comma-separated origins |
-| `JWT_ACCESS_EXPIRES_IN` | — | `24h` | |
-| `JWT_REFRESH_EXPIRES_IN` | — | `7d` | |
+| `NODE_ENV` | — | `production` (`development` in dev override) | |
+| `CORS_ORIGIN` | — | `http://localhost:5173,http://localhost:8080,http://localhost:3000` | Comma-separated |
+| `REDIS_URL` | — | `redis://redis:6379` | |
 | `LOG_LEVEL` | — | `info` | `debug`, `info`, `warn`, `error` |
-| `LOG_FILE` | — | — | Path to optional log file |
-| `CRON_ENABLED` | — | `false` | Enable scheduled notification jobs |
-| `CRON_SECRET` | — | — | Secret for cron endpoint auth |
+| `CRON_ENABLED` | — | `false` | Enable notification cron jobs |
 
 ### Frontend
 
 | Variable | Required | Default | Notes |
 |---|:---:|---|---|
-| `VITE_API_BASE_URL` | — | `http://localhost:3000/api` | Points the SPA at the backend |
+| `VITE_API_BASE_URL` | — | `http://localhost:3000/api` | Backend API base URL |
 
-### Infrastructure (Postgres & Redis)
+### Infrastructure
 
 | Variable | Required | Default | Notes |
 |---|:---:|---|---|
 | `POSTGRES_USER` | — | `fammeal` | |
 | `POSTGRES_PASSWORD` | — | `changeme_pg_password` | Change in production! |
 | `POSTGRES_DB` | — | `fammeal` | |
-| `REDIS_URL` | — | `redis://redis:6379` | |
-| `CACHE_DEFAULT_TTL_SECONDS` | — | `60` | Redis cache TTL in seconds |
 
-## 9. Future Improvements
-- Add explicit API docs generation from route schemas/OpenAPI.
-- Expand audit trails for admin decisions (who changed what, when).
-- Add end-to-end test coverage for full workflow (`create meal -> vote -> finalize`).
+---
 
-## Assumptions
-- This README reflects implemented modules and active routes in the current repository.
-- The stack includes an optional scheduler worker/cron path for notifications; it is not currently modeled as a separate Docker Compose service.
-- Some UI pages exist in codebase but are not part of the main route tree; functionality listed here focuses on actively wired flows.
+## 10. Using the App
+
+Once `make dev` is running:
+
+1. **Open** → [http://localhost:5173](http://localhost:5173)
+2. **Register** — create an account with email, username, and password.
+3. **Create a family** — set up a family workspace after logging in.
+4. **Plan a meal** — as admin, create a meal with date and constraints.
+5. **Propose & vote** — members suggest dishes and submit ranked votes.
+6. **Finalize** — admin closes voting, picks a winner, assigns a cook → everyone gets notified.
+
+> **Health check:** hit [http://localhost:3000/health](http://localhost:3000/health) for a `200 OK`.
+
+---
+
+## 11. Future Improvements
+
+- Add OpenAPI/Swagger docs generation from route schemas.
+- Expand audit trails for admin decisions.
+- Add end-to-end test coverage for the full workflow.

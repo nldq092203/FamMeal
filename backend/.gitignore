@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -41,6 +40,3 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
-
-# Drizzle
-drizzle/

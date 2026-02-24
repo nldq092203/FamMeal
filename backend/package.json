@@ -1,7 +1,7 @@
 {
-  "name": "mama-meal",
+  "name": "fammeal-backend",
   "version": "2.0.0",
-  "description": "Family meal planning API - Express + Sequelize",
+  "description": "FamMeal — Family meal planning REST API (Express + Sequelize)",
   "main": "src/index.js",
   "scripts": {
     "dev": "node src/index.js",

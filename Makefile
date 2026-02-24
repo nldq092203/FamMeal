@@ -90,8 +90,8 @@ shell-postgres: ## Open psql in postgres container
 	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-fammeal} -d $${POSTGRES_DB:-fammeal}
 
 # ---- Database -----------------------------------------------
-migrate: ## Run database migrations
-	$(COMPOSE) exec backend node dist/scripts/migrate.js
+migrate: ## Run database migrations (Sequelize sync)
+	$(COMPOSE) exec backend node src/scripts/sync.js
 
 # ---- Cleanup ------------------------------------------------
 clean: ## Stop containers, remove images, volumes, and orphans
