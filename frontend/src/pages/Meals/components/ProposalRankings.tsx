@@ -35,13 +35,35 @@ export function ProposalRankings({ proposals, votingStatus, className = '' }: Pr
   const top3 = sortedProposals.slice(0, 3)
   const rest = sortedProposals.slice(3)
 
-  // Get member info for proposer
-  const getProposerInfo = (userId: string) => {
-    const member = family?.members?.find((m) => m.userId === userId)
-    return {
-      name: member?.name || 'Unknown',
-      avatarId: member?.avatarId || 'panda',
-    }
+  function getFamilyMemberByUserId(userId: string) {
+    return family?.members?.find((m) => m.userId === userId) ?? null
+  }
+
+  function getMemberDisplayName(member: unknown): string | null {
+    if (!member || typeof member !== 'object') return null
+    const direct = member as { name?: unknown; username?: unknown; user?: { name?: unknown; username?: unknown } }
+    const name = typeof direct.name === 'string' ? direct.name : (typeof direct.user?.name === 'string' ? direct.user.name : null)
+    const username = typeof direct.username === 'string' ? direct.username : (typeof direct.user?.username === 'string' ? direct.user.username : null)
+    return (name && name.trim()) ? name : (username && username.trim() ? username : null)
+  }
+
+  function getMemberAvatarId(member: unknown): string | null {
+    if (!member || typeof member !== 'object') return null
+    const direct = member as { avatarId?: unknown; user?: { avatarId?: unknown } }
+    const avatarId = typeof direct.avatarId === 'string' ? direct.avatarId : (typeof direct.user?.avatarId === 'string' ? direct.user.avatarId : null)
+    return avatarId && avatarId.trim() ? avatarId : null
+  }
+
+  // Best-effort proposer info (works with both flattened and nested family member shapes).
+  const getProposerInfo = (proposal: ProposalWithStats) => {
+    const member = getFamilyMemberByUserId(proposal.userId)
+    const name =
+      getMemberDisplayName(member) ||
+      proposal.userName ||
+      proposal.userUsername ||
+      'Unknown'
+    const avatarId = getMemberAvatarId(member) || 'panda'
+    return { name, avatarId }
   }
 
   // Rank styling configurations
@@ -104,7 +126,7 @@ export function ProposalRankings({ proposals, votingStatus, className = '' }: Pr
               const rank = idx + 1
               const style = getRankStyle(rank)
               const Icon = style.icon
-              const proposer = getProposerInfo(proposal.userId)
+              const proposer = getProposerInfo(proposal)
 
               return (
                 <div
@@ -164,7 +186,7 @@ export function ProposalRankings({ proposals, votingStatus, className = '' }: Pr
               const proposal = top3[1]
               const style = getRankStyle(2)
               const Icon = style.icon
-              const proposer = getProposerInfo(proposal.userId)
+              const proposer = getProposerInfo(proposal)
               const imageUrl = proposal.extra?.imageUrls?.[0]
 
               return (
@@ -222,7 +244,7 @@ export function ProposalRankings({ proposals, votingStatus, className = '' }: Pr
               const proposal = top3[0]
               const style = getRankStyle(1)
               const Icon = style.icon
-              const proposer = getProposerInfo(proposal.userId)
+              const proposer = getProposerInfo(proposal)
               const imageUrl = proposal.extra?.imageUrls?.[0]
 
               return (
@@ -280,7 +302,7 @@ export function ProposalRankings({ proposals, votingStatus, className = '' }: Pr
               const proposal = top3[2]
               const style = getRankStyle(3)
               const Icon = style.icon
-              const proposer = getProposerInfo(proposal.userId)
+              const proposer = getProposerInfo(proposal)
               const imageUrl = proposal.extra?.imageUrls?.[0]
 
               return (
@@ -344,7 +366,7 @@ export function ProposalRankings({ proposals, votingStatus, className = '' }: Pr
           </h3>
           {rest.map((proposal, idx) => {
             const rank = idx + 4
-            const proposer = getProposerInfo(proposal.userId)
+            const proposer = getProposerInfo(proposal)
             const imageUrl = proposal.extra?.imageUrls?.[0]
 
             return (

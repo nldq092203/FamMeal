@@ -25,6 +25,41 @@ describe('Meals API (Public)', () => {
       expect(Array.isArray(res.body.data)).toBe(true);
     });
 
+    it('should include meals on the end-date when using date-only to/start/end params', async () => {
+      const scheduledFor = '2026-02-28T17:00:00.000Z';
+      const created = await createTestMeal(admin.accessToken, family.id, { scheduledFor, mealType: 'OTHER' });
+
+      const res1 = await request(app)
+        .get(`/api/meals?familyId=${family.id}&from=2026-02-28&to=2026-02-28`)
+        .set('Authorization', `Bearer ${member.accessToken}`)
+        .expect(200);
+
+      expect(res1.body.success).toBe(true);
+      expect(res1.body.data.some((m) => m.id === created.id)).toBe(true);
+
+      const res2 = await request(app)
+        .get(`/api/meals?familyId=${family.id}&startDate=2026-02-28&endDate=2026-02-28`)
+        .set('Authorization', `Bearer ${member.accessToken}`)
+        .expect(200);
+
+      expect(res2.body.success).toBe(true);
+      expect(res2.body.data.some((m) => m.id === created.id)).toBe(true);
+    });
+
+    it('should treat an explicit time in to/endDate as an exact boundary (no end-of-day expansion)', async () => {
+      const mealEarly = await createTestMeal(admin.accessToken, family.id, { scheduledFor: '2026-03-01T11:00:00.000Z' });
+      const mealLate = await createTestMeal(admin.accessToken, family.id, { scheduledFor: '2026-03-01T17:00:00.000Z' });
+
+      const res = await request(app)
+        .get(`/api/meals?familyId=${family.id}&from=2026-03-01T00:00:00.000Z&to=2026-03-01T12:00:00.000Z`)
+        .set('Authorization', `Bearer ${member.accessToken}`)
+        .expect(200);
+
+      const ids = res.body.data.map((m) => m.id);
+      expect(ids).toContain(mealEarly.id);
+      expect(ids).not.toContain(mealLate.id);
+    });
+
     it('OUTSIDER should be blocked from listing meals (RBAC)', async () => {
       await request(app)
         .get(`/api/meals?familyId=${family.id}`)

@@ -150,7 +150,7 @@ const HomePage: React.FC = () => {
 
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold truncate">
-                      <span className="text-foreground">{proposal.userName}</span> proposed{' '}
+                      <span className="text-foreground">{proposal.userName || proposal.userUsername || 'Someone'}</span> proposed{' '}
                       <span className="text-foreground">{proposal.dishName}</span>
                     </div>
                     <div className="text-sm text-muted-foreground truncate">

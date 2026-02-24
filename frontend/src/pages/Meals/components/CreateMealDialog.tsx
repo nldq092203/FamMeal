@@ -17,9 +17,10 @@ interface CreateMealDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   familyId: string
+  onCreated?: (scheduledForIso: string) => void
 }
 
-export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDialogProps) {
+export function CreateMealDialog({ open, onOpenChange, familyId, onCreated }: CreateMealDialogProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const toast = useToast()
   const createMealMutation = useCreateMealMutation()
@@ -64,6 +65,7 @@ export function CreateMealDialog({ open, onOpenChange, familyId }: CreateMealDia
         constraints,
       })
 
+      onCreated?.(scheduledFor)
       onOpenChange(false)
       resetForm()
       toast.success('Meal created.')

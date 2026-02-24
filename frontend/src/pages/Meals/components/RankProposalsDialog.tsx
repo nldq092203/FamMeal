@@ -192,7 +192,7 @@ export function RankProposalsDialog({
                       <div className="flex items-center gap-1.5 mt-1">
                         <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
                         <p className="text-xs text-muted-foreground truncate">
-                          Proposed by {proposal.userName || 'You'}
+                          Proposed by {proposal.userName || proposal.userUsername || 'You'}
                         </p>
                       </div>
                     </div>

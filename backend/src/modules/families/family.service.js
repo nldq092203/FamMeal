@@ -2,6 +2,33 @@ const { sequelize } = require('../../config/database');
 const { Family, FamilyMember, User, Meal, Proposal } = require('../../db/models');
 const { NotFoundError, ConflictError, ForbiddenError } = require('../../shared/errors');
 
+function toFamilyDto(family, opts = {}) {
+  const userId = opts.userId;
+  const json = family && typeof family.toJSON === 'function' ? family.toJSON() : family;
+  if (!json) return json;
+  const membersRaw = Array.isArray(json?.members) ? json.members : [];
+
+  const members = membersRaw.map((m) => {
+    const user = m?.user || {};
+    return {
+      userId: m.userId,
+      username: user.username ?? m.username ?? '',
+      name: user.name ?? m.name ?? '',
+      avatarId: user.avatarId ?? m.avatarId ?? null,
+      role: m.role,
+      joinedAt: m.joinedAt,
+    };
+  });
+
+  const myRole = userId ? members.find((m) => m.userId === userId)?.role : undefined;
+
+  return {
+    ...json,
+    members,
+    ...(myRole ? { myRole } : {}),
+  };
+}
+
 async function createFamily(data, userId) {
   const t = await sequelize.transaction();
   try {
@@ -18,7 +45,7 @@ async function createFamily(data, userId) {
       include: [{ model: FamilyMember, as: 'members', include: [{ model: User, as: 'user', attributes: ['id', 'username', 'name', 'avatarId'] }] }],
     });
 
-    return result;
+    return toFamilyDto(result, { userId });
   } catch (err) {
     await t.rollback();
     throw err;
@@ -63,7 +90,7 @@ async function getFamilyById(id, userId) {
   const membership = family.members.find((m) => m.userId === userId);
   if (!membership) throw new ForbiddenError('You are not a member of this family');
 
-  return { ...family.toJSON(), myRole: membership.role };
+  return toFamilyDto(family, { userId });
 }
 
 async function updateFamily(id, data) {
@@ -72,9 +99,10 @@ async function updateFamily(id, data) {
 
   await Family.update({ ...data, updatedAt: new Date() }, { where: { id } });
 
-  return Family.findByPk(id, {
+  const result = await Family.findByPk(id, {
     include: [{ model: FamilyMember, as: 'members', include: [{ model: User, as: 'user', attributes: ['id', 'username', 'name', 'avatarId'] }] }],
   });
+  return toFamilyDto(result);
 }
 
 async function updateFamilyProfile(id, data) {
@@ -83,9 +111,10 @@ async function updateFamilyProfile(id, data) {
 
   await Family.update({ ...data, updatedAt: new Date() }, { where: { id } });
 
-  return Family.findByPk(id, {
+  const result = await Family.findByPk(id, {
     include: [{ model: FamilyMember, as: 'members', include: [{ model: User, as: 'user', attributes: ['id', 'username', 'name', 'avatarId'] }] }],
   });
+  return toFamilyDto(result);
 }
 
 async function updateFamilySettings(id, settings) {
@@ -95,9 +124,10 @@ async function updateFamilySettings(id, settings) {
   const merged = { ...(family.settings || {}), ...settings };
   await Family.update({ settings: merged, updatedAt: new Date() }, { where: { id } });
 
-  return Family.findByPk(id, {
+  const result = await Family.findByPk(id, {
     include: [{ model: FamilyMember, as: 'members', include: [{ model: User, as: 'user', attributes: ['id', 'username', 'name', 'avatarId'] }] }],
   });
+  return toFamilyDto(result);
 }
 
 async function deleteFamily(id) {
@@ -117,9 +147,10 @@ async function addMember(familyId, data) {
 
   await FamilyMember.create({ familyId, userId: data.userId, role: data.role || 'MEMBER' });
 
-  return Family.findByPk(familyId, {
+  const result = await Family.findByPk(familyId, {
     include: [{ model: FamilyMember, as: 'members', include: [{ model: User, as: 'user', attributes: ['id', 'username', 'name', 'avatarId'] }] }],
   });
+  return toFamilyDto(result);
 }
 
 async function removeMember(familyId, memberId) {

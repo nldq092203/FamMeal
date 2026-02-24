@@ -196,13 +196,13 @@ export default function ProposalDetailPage() {
         <div className="px-4 py-4 flex items-center justify-between border-b">
           <div className="flex items-center gap-3">
             <img
-              src={getAvatarSrc(proposal.userName || 'default')}
-              alt={proposal.userName || 'User'}
+              src={getAvatarSrc(proposal.userName || proposal.userUsername || 'default')}
+              alt={proposal.userName || proposal.userUsername || 'User'}
               className="h-10 w-10 rounded-full object-cover"
             />
             <div>
               <span className="font-semibold block">
-                {isOwner ? 'Proposed by You' : `Proposed by ${proposal.userName || 'Member'}`}
+                {isOwner ? 'Proposed by You' : `Proposed by ${proposal.userName || proposal.userUsername || 'Member'}`}
               </span>
               {currentRank > 0 && (
                 <span className="text-xs text-muted-foreground">

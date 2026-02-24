@@ -32,6 +32,8 @@ const listMealsQuerySchema = Joi.object({
   status: Joi.string().valid('PLANNING', 'LOCKED', 'COMPLETED').optional(),
   from: Joi.date().iso().optional(),
   to: Joi.date().iso().optional(),
+  startDate: Joi.date().iso().optional(),
+  endDate: Joi.date().iso().optional(),
   limit: Joi.number().integer().min(1).max(100).default(20),
   offset: Joi.number().integer().min(0).default(0),
 });

@@ -15,9 +15,9 @@ import type { AvatarId } from '@/assets/avatars'
 import { getAvatarSrc } from '@/assets/avatars'
 import type { Family, Meal, MealSummary, MealType } from '@/types'
 import { MEAL_TYPE_LABELS } from './constants'
-import { formatLocalDateParam } from '@/query/format'
 import { useMealsQuery } from '@/query/hooks/useMealsQuery'
 import { useMealSummaryQuery } from '@/query/hooks/useMealSummaryQuery'
+import { useActiveMealQuery } from '@/query/hooks/useActiveMealQuery'
 
 // Meal type ordering for chronological sorting
 const MEAL_TYPE_ORDER: MealType[] = ['BREAKFAST', 'BRUNCH', 'LUNCH', 'DINNER', 'SNACK']
@@ -74,29 +74,13 @@ function computeVotingData(input: {
 }
 
 export default function MealsPage() {
-  const { family } = useFamily()
+  const { family, isLoading: isFamilyLoading } = useFamily()
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const [showCreateMeal, setShowCreateMeal] = useState(false)
   const [showLimit, setShowLimit] = useState(10)
   
-  // Default: Always fetch 1 week centered on today (3 days before, today, 3 days after)
-  const defaultWeekRange = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const start = new Date(today)
-    start.setDate(today.getDate() - 3) // 3 days before today
-    start.setHours(0, 0, 0, 0)
-    
-    const end = new Date(today)
-    end.setDate(today.getDate() + 3) // 3 days after today
-    end.setHours(23, 59, 59, 999)
-    
-    return { start, end }
-  }, [])
-
   // Selected days for filtering (set of date strings)
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set())
   
@@ -115,11 +99,20 @@ export default function MealsPage() {
   const [calendarSelectionMode, setCalendarSelectionMode] = useState<'day' | 'range'>('day')
   const [calendarRange, setCalendarRange] = useState<DateRange>({ start: null, end: null })
 
-  // Always fetch 1 week of meals (one time)
+  const visibleWeekRange = useMemo(() => {
+    const start = new Date(currentWeekStart)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
+  }, [currentWeekStart])
+
+  // Fetch meals for the currently visible week
   const mealsQuery = useMealsQuery({
     familyId: family?.id ?? null,
-    startDate: formatLocalDateParam(defaultWeekRange.start),
-    endDate: formatLocalDateParam(defaultWeekRange.end),
+    startDate: visibleWeekRange.start.toISOString(),
+    endDate: visibleWeekRange.end.toISOString(),
   })
 
   // Sort meals in descending order by date (newest first)
@@ -207,24 +200,14 @@ export default function MealsPage() {
   const displayedMeals = filteredMeals.slice(0, showLimit)
   const hasMoreMeals = filteredMeals.length > showLimit
 
-  // Find the most upcoming meal with active voting
-  const activeVoting = sortedMeals
-    .filter(
-      (meal) =>
-        meal.status === 'PLANNING' && (!meal.votingClosedAt || new Date(meal.votingClosedAt) > new Date())
-    )
-    .sort((a, b) => {
-      const dateA = new Date(a.scheduledFor || a.date || 0).getTime()
-      const dateB = new Date(b.scheduledFor || b.date || 0).getTime()
-      
-      // If dates are different, sort by date (ascending for upcoming)
-      if (dateA !== dateB) {
-        return dateA - dateB
-      }
-      
-      // If dates are the same, sort by meal type order (breakfast first, dinner last)
-      return MEAL_TYPE_ORDER.indexOf(a.mealType) - MEAL_TYPE_ORDER.indexOf(b.mealType)
-    })[0]
+  // Active voting should not depend on the currently visible week.
+  const activeMealQuery = useActiveMealQuery(family?.id ?? null)
+  const activeVoting =
+    activeMealQuery.data &&
+    activeMealQuery.data.status === 'PLANNING' &&
+    (!activeMealQuery.data.votingClosedAt || new Date(activeMealQuery.data.votingClosedAt) > new Date())
+      ? activeMealQuery.data
+      : null
 
   // Fetch meal summary for the active voting meal
   const activeMealSummaryQuery = useMealSummaryQuery(activeVoting?.id ?? null)
@@ -240,6 +223,23 @@ export default function MealsPage() {
   const handleVote = async (mealId: string) => {
     // Navigate to meal detail page for ranked-choice voting
     navigate(`/meals/${mealId}`)
+  }
+
+  const handleWeekChange = (nextWeekStart: Date) => {
+    setCurrentWeekStart(nextWeekStart)
+    setSelectedDays(new Set())
+  }
+
+  const handleMealCreated = (scheduledForIso: string) => {
+    const scheduled = new Date(scheduledForIso)
+    if (Number.isNaN(scheduled.getTime())) return
+
+    scheduled.setHours(0, 0, 0, 0)
+    const newWeekStart = new Date(scheduled)
+    newWeekStart.setDate(scheduled.getDate() - 3)
+    setCurrentWeekStart(newWeekStart)
+    setSelectedDays(new Set())
+    setSelectedDate(scheduled)
   }
 
   const displayName = user?.name || user?.username || 'there'
@@ -318,10 +318,10 @@ export default function MealsPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm text-muted-foreground">
-              {defaultWeekRange.start.toLocaleDateString('en-US', { 
+              {visibleWeekRange.start.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric' 
-              })} - {defaultWeekRange.end.toLocaleDateString('en-US', { 
+              })} - {visibleWeekRange.end.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric',
                 year: 'numeric'
@@ -361,7 +361,7 @@ export default function MealsPage() {
         </div>
 
         {/* Loading State */}
-        {mealsQuery.isLoading ? (
+        {isFamilyLoading || mealsQuery.isLoading ? (
           <div className="space-y-4">
             <div className="h-[340px] bg-muted animate-pulse rounded-lg" />
             <div className="h-20 bg-muted animate-pulse rounded-lg" />
@@ -378,7 +378,7 @@ export default function MealsPage() {
                     weekStart={currentWeekStart}
                     selectedDays={selectedDays}
                     onDayToggle={handleDayToggle}
-                    onWeekChange={setCurrentWeekStart}
+                    onWeekChange={handleWeekChange}
                     onOpenFullCalendar={() => setIsCalendarOpen(true)}
                   />
                   {selectedDays.size > 0 && (
@@ -579,6 +579,7 @@ export default function MealsPage() {
             open={showCreateMeal}
             onOpenChange={setShowCreateMeal}
             familyId={family.id}
+            onCreated={handleMealCreated}
           />
         )}
       </PageShell>
