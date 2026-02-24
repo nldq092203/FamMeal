@@ -11,12 +11,12 @@ describe('Middleware', () => {
 
   describe('Auth Middleware', () => {
     it('should reject requests without Authorization header', async () => {
-      await request(app).get('/api/users/me').expect(401);
+      await request(app).get('/api/auth/me').expect(401);
     });
 
     it('should reject malformed Bearer token', async () => {
       await request(app)
-        .get('/api/users/me')
+        .get('/api/auth/me')
         .set('Authorization', 'NotBearer token')
         .expect(401);
     });
@@ -29,7 +29,7 @@ describe('Middleware', () => {
       );
 
       await request(app)
-        .get('/api/users/me')
+        .get('/api/auth/me')
         .set('Authorization', `Bearer ${expiredToken}`)
         .expect(401);
     });
@@ -42,7 +42,7 @@ describe('Middleware', () => {
       );
 
       await request(app)
-        .get('/api/users/me')
+        .get('/api/auth/me')
         .set('Authorization', `Bearer ${wrongAlgoToken}`)
         .expect(401);
     });
@@ -55,7 +55,7 @@ describe('Middleware', () => {
       );
 
       await request(app)
-        .get('/api/users/me')
+        .get('/api/auth/me')
         .set('Authorization', `Bearer ${wrongSecretToken}`)
         .expect(401);
     });
@@ -63,7 +63,7 @@ describe('Middleware', () => {
     it('should accept valid JWT and set req.user', async () => {
       const user = await createTestUser();
       const res = await request(app)
-        .get('/api/users/me')
+        .get('/api/auth/me')
         .set('Authorization', `Bearer ${user.accessToken}`)
         .expect(200);
 

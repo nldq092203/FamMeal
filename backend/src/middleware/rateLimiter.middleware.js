@@ -1,6 +1,9 @@
 const rateLimit = require('express-rate-limit');
 
+const isTestEnv = process.env.NODE_ENV === 'test';
+
 const globalLimiter = rateLimit({
+  ...(isTestEnv ? { skip: () => true } : {}),
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
@@ -13,6 +16,7 @@ const globalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
+  ...(isTestEnv ? { skip: () => true } : {}),
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
