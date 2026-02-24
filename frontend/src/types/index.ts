@@ -84,7 +84,6 @@ export type MealStatus = 'PLANNING' | 'LOCKED' | 'COMPLETED';
 export interface MealConstraints {
   isDiningOut?: boolean;
   maxBudget?: number;
-  maxPrepTime?: number;
   maxPrepTimeMinutes?: number;
   dietaryRestrictions?: string[];
   cuisinePreferences?: string[];

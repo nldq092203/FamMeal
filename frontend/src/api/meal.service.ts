@@ -140,16 +140,10 @@ export const mealService = {
     const requestParams: Record<string, unknown> = {
       familyId: params.familyId,
       status: params.status,
-      // Backend expects from/to + limit/offset.
       from: params.startDate,
       to: params.endDate,
       limit,
       offset,
-      // Backward compatibility: some environments may still accept these.
-      startDate: params.startDate,
-      endDate: params.endDate,
-      page,
-      pageSize: limit,
     }
 
     const response = await apiClient.get<ApiResponse<unknown>>('/meals', { params: requestParams });

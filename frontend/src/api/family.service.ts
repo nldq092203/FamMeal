@@ -51,7 +51,7 @@ export const adminFamilyService = {
   },
 
   async updateFamilySettings(id: string, settings: FamilySettings): Promise<Family> {
-    const response = await apiClient.patch<ApiResponse<Family>>(`/admin/families/${id}/settings`, { settings });
+    const response = await apiClient.patch<ApiResponse<Family>>(`/admin/families/${id}/settings`, settings);
     return unwrapApiResponse(response.data);
   },
 

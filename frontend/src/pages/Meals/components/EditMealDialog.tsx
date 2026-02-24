@@ -56,7 +56,7 @@ export function EditMealDialog({ open, onOpenChange, meal }: EditMealDialogProps
   const [isDiningOut, setIsDiningOut] = useState(Boolean(initialConstraints.isDiningOut))
   const [maxBudget, setMaxBudget] = useState(initialConstraints.maxBudget ?? 50)
   const [maxPrepTime, setMaxPrepTime] = useState(
-    initialConstraints.maxPrepTimeMinutes ?? initialConstraints.maxPrepTime ?? 60
+    initialConstraints.maxPrepTimeMinutes ?? 60
   )
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>(initialConstraints.dietaryRestrictions ?? [])
   const [cuisinePreferences, setCuisinePreferences] = useState<string[]>(initialConstraints.cuisinePreferences ?? [])
@@ -70,7 +70,7 @@ export function EditMealDialog({ open, onOpenChange, meal }: EditMealDialogProps
     setMealType(meal.mealType)
     setIsDiningOut(Boolean(initialConstraints.isDiningOut))
     setMaxBudget(initialConstraints.maxBudget ?? 50)
-    setMaxPrepTime(initialConstraints.maxPrepTimeMinutes ?? initialConstraints.maxPrepTime ?? 60)
+    setMaxPrepTime(initialConstraints.maxPrepTimeMinutes ?? 60)
     setDietaryRestrictions(initialConstraints.dietaryRestrictions ?? [])
     setCuisinePreferences(initialConstraints.cuisinePreferences ?? [])
     setServings(initialConstraints.servings ? String(initialConstraints.servings) : '')

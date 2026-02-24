@@ -5,7 +5,7 @@ import type { ApiResponse, UpdateUserRequest, User } from '@/types'
 export interface UserSuggestion {
   id: string
   username: string
-  displayName: string
+  name: string
   avatarId: string | null
   email?: string
 }

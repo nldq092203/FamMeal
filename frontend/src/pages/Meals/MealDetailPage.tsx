@@ -232,12 +232,12 @@ export default function MealDetailPage() {
                       {isDiningOut ? `Up to €${meal.constraints.maxBudget}/person` : `Under $${meal.constraints.maxBudget}`}
                     </Badge>
                   ) : null}
-                  {meal.constraints.maxPrepTime || meal.constraints.maxPrepTimeMinutes ? (
+                  {meal.constraints.maxPrepTimeMinutes ? (
                     <Badge
                       variant="outline"
                       className="rounded-full bg-accent/15 text-foreground border-accent/30 px-3 py-1"
                     >
-                      <Timer className="h-3.5 w-3.5 mr-1.5" /> Max {meal.constraints.maxPrepTime ?? meal.constraints.maxPrepTimeMinutes}m
+                      <Timer className="h-3.5 w-3.5 mr-1.5" /> Max {meal.constraints.maxPrepTimeMinutes}m
                     </Badge>
                   ) : null}
                   {meal.constraints.servings ? (

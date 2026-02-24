@@ -20,6 +20,7 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
     if (status === 401) return 'Your session has expired. Please log in again.';
     if (status === 403) return 'You do not have permission to do this.';
     if (status === 404) return 'Not found.';
+    if (status === 413) return 'Image too large. Use a smaller image or paste a hosted image URL.';
     if (status === 429) return 'Too many requests. Please try again soon.';
     if (typeof status === 'number' && status >= 500) return 'Server error. Please try again.';
 
@@ -29,4 +30,3 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
   if (error instanceof Error && error.message) return error.message;
   return fallback;
 }
-

@@ -121,7 +121,7 @@ export function CreateFamilyDialog({
                     .filter((s) => !invitedMembers.some((m) => m.id === s.id))
                     .map((s) => ({
                       id: s.id,
-                      label: s.displayName,
+                      label: s.name,
                       subtitle: s.email ?? `@${s.username}`,
                       icon: (
                         <img
@@ -152,7 +152,7 @@ export function CreateFamilyDialog({
                             loading="lazy"
                           />
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold truncate">{m.displayName}</div>
+                            <div className="text-sm font-semibold truncate">{m.name}</div>
                             <div className="text-xs text-muted-foreground truncate">{m.email ?? `@${m.username}`}</div>
                           </div>
                         </div>
@@ -161,7 +161,7 @@ export function CreateFamilyDialog({
                           size="icon"
                           className="h-9 w-9 text-muted-foreground hover:text-destructive"
                           onClick={() => onRemoveMember(m.id)}
-                          aria-label={`Remove ${m.displayName}`}
+                          aria-label={`Remove ${m.name}`}
                         >
                           <X className="h-4 w-4" />
                         </Button>

@@ -21,7 +21,6 @@ interface MealCardProps {
     constraints?: {
       isDiningOut?: boolean
       maxBudget?: number
-      maxPrepTime?: number
       maxPrepTimeMinutes?: number
       servings?: number
       dietaryRestrictions?: string[]
@@ -43,7 +42,7 @@ function isOutdatedMeal(scheduledFor?: string): boolean {
 
 export function MealCard({ meal, onClick }: MealCardProps) {
   const isDiningOut = Boolean(meal.constraints?.isDiningOut)
-  const maxPrepMinutes = meal.constraints?.maxPrepTime ?? meal.constraints?.maxPrepTimeMinutes
+  const maxPrepMinutes = meal.constraints?.maxPrepTimeMinutes
   // Determine dynamic status text
   const getStatusText = () => {
     if (meal.status === 'PLANNING') {

@@ -45,9 +45,7 @@ export default function ProposalDetailPage() {
   const isOwner = Boolean(user?.id) && proposal?.userId === user?.id
 
   // Extract time and cost from meal constraints (dynamic values)
-  const estimatedTime = meal?.constraints?.maxPrepTime 
-    ? `${meal.constraints.maxPrepTime}M` 
-    : meal?.constraints?.maxPrepTimeMinutes 
+  const estimatedTime = meal?.constraints?.maxPrepTimeMinutes 
     ? `${meal.constraints.maxPrepTimeMinutes}M`
     : null
     

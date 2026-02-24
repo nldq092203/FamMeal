@@ -51,7 +51,7 @@ const VotingPage: React.FC = () => {
 
   const mealConstraints = mealSummary?.meal.constraints
   const maxBudget = mealConstraints?.maxBudget ?? null
-  const rawPrepTime = mealConstraints?.maxPrepTimeMinutes ?? mealConstraints?.maxPrepTime ?? null
+  const rawPrepTime = mealConstraints?.maxPrepTimeMinutes ?? null
   const budgetValue = useMemo(() => {
     if (maxBudget == null) return null
     return clampNumber(maxBudget, 10, 100)

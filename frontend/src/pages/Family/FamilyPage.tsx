@@ -506,7 +506,7 @@ export default function FamilyPage() {
                       .filter((s) => !members.some((m) => m.userId === s.id))
                       .map((s) => ({
                         id: s.id,
-                        label: s.displayName,
+                        label: s.name,
                         subtitle: s.email ?? `@${s.username}`,
                         icon: (
                           <img
