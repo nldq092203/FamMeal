@@ -28,8 +28,8 @@ describe('Notifications API', () => {
         .set('Authorization', `Bearer ${member.accessToken}`)
         .expect(200);
 
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBeGreaterThanOrEqual(3);
+      expect(Array.isArray(res.body.data.items)).toBe(true);
+      expect(res.body.data.items.length).toBeGreaterThanOrEqual(3);
     });
 
     it('OUTSIDER should be blocked (RBAC)', async () => {

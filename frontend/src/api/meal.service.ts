@@ -10,8 +10,108 @@ import type {
   Proposal,
   Vote,
   MealMyVote,
+  ProposalWithStats,
+  VoteSummary,
 
 } from '@/types';
+
+function getSelectedProposalIds(finalDecision: unknown): string[] {
+  if (!finalDecision || typeof finalDecision !== 'object') return []
+  const fd = finalDecision as { selectedProposalIds?: unknown; selectedProposalId?: unknown }
+  if (Array.isArray(fd.selectedProposalIds)) return fd.selectedProposalIds.filter((x): x is string => typeof x === 'string' && x.length > 0)
+  if (typeof fd.selectedProposalId === 'string' && fd.selectedProposalId) return [fd.selectedProposalId]
+  return []
+}
+
+function computeVoteStats(votes: unknown, proposalCount: number) {
+  const safeVotes = Array.isArray(votes) ? votes : []
+  const voteCount = safeVotes.length
+  if (voteCount === 0) return { voteCount: 0, averageRank: 0, totalScore: 0 }
+
+  const sumRank = safeVotes.reduce((sum, v) => {
+    if (!v || typeof v !== 'object') return sum
+    const rank = (v as { rankPosition?: unknown }).rankPosition
+    return sum + (typeof rank === 'number' ? rank : 0)
+  }, 0)
+  const averageRank = sumRank / voteCount
+
+  const totalScore = safeVotes.reduce((sum, v) => {
+    if (!v || typeof v !== 'object') return sum
+    const rank = (v as { rankPosition?: unknown }).rankPosition
+    if (typeof rank !== 'number' || !rank) return sum
+    const score = proposalCount - rank + 1
+    return sum + (score > 0 ? score : 0)
+  }, 0)
+
+  return { voteCount, averageRank, totalScore }
+}
+
+function normalizeMealSummary(data: unknown): MealSummary {
+  if (data && typeof data === 'object' && 'meal' in data) {
+    return data as MealSummary
+  }
+
+  // Backward-compatible: backend previously returned a Meal with included proposals/votes.
+  const meal = data as Partial<Meal> & { proposals?: unknown; finalDecision?: unknown }
+  const proposalsRaw = Array.isArray(meal?.proposals) ? (meal.proposals as unknown[]) : []
+  const proposalCount = proposalsRaw.length
+  const selectedIds = new Set(getSelectedProposalIds(meal?.finalDecision))
+
+  const proposals: ProposalWithStats[] = proposalsRaw.map((pUnknown) => {
+    const p = pUnknown as {
+      id: string
+      mealId: string
+      userId: string
+      dishName: string
+      ingredients?: string
+      notes?: string
+      extra?: Proposal['extra']
+      createdAt?: string
+      updatedAt?: string
+      deletedAt?: string | null
+      votes?: unknown
+      user?: { name?: string; username?: string }
+    }
+
+    const votes = Array.isArray(p?.votes) ? (p.votes as unknown[]) : []
+    const voteStats = computeVoteStats(votes, proposalCount)
+    return {
+      id: p.id,
+      mealId: p.mealId,
+      userId: p.userId,
+      dishName: p.dishName,
+      ingredients: p.ingredients,
+      notes: p.notes,
+      extra: p.extra,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      deletedAt: p.deletedAt,
+      userName: p.user?.name ?? '',
+      userUsername: p.user?.username ?? '',
+      voteStats,
+      isSelected: selectedIds.has(p.id),
+    }
+  })
+
+  const voteSummary: VoteSummary[] = proposals.map((p) => ({
+    proposalId: p.id,
+    dishName: p.dishName,
+    voteCount: p.voteStats.voteCount,
+    averageRank: p.voteStats.averageRank,
+    totalScore: p.voteStats.totalScore,
+    proposedBy: p.userName || p.userUsername || 'Unknown',
+  }))
+
+  const mealOnly = { ...meal }
+  delete (mealOnly as { proposals?: unknown }).proposals
+
+  return {
+    meal: mealOnly as Meal,
+    proposals,
+    voteSummary,
+    ...(meal?.finalDecision ? { finalDecision: meal.finalDecision } : {}),
+  }
+}
 
 export const mealService = {
   // Meal CRUD
@@ -32,10 +132,39 @@ export const mealService = {
     startDate?: string;
     endDate?: string;
     status?: string;
-  }): Promise<{ meals: Meal[]; pagination: Pagination }> {
-    const response = await apiClient.get<ApiResponse<Meal[]>>('/meals', { params });
-    const { data, pagination } = unwrapPaginatedResponse(response.data);
-    return { meals: data, pagination: pagination! };
+  }): Promise<{ meals: Meal[]; pagination?: Pagination }> {
+    const limit = params.pageSize ?? 20
+    const page = params.page ?? 1
+    const offset = Math.max(0, (page - 1) * limit)
+
+    const requestParams: Record<string, unknown> = {
+      familyId: params.familyId,
+      status: params.status,
+      // Backend expects from/to + limit/offset.
+      from: params.startDate,
+      to: params.endDate,
+      limit,
+      offset,
+      // Backward compatibility: some environments may still accept these.
+      startDate: params.startDate,
+      endDate: params.endDate,
+      page,
+      pageSize: limit,
+    }
+
+    const response = await apiClient.get<ApiResponse<unknown>>('/meals', { params: requestParams });
+
+    // Primary: wrapped array + optional pagination
+    const { data, pagination } = unwrapPaginatedResponse(response.data as ApiResponse<unknown>)
+    if (Array.isArray(data)) return { meals: data as Meal[], pagination }
+
+    // Fallback: { meals: [...] }
+    if (data && typeof data === 'object' && Array.isArray((data as { meals?: unknown }).meals)) {
+      return { meals: (data as { meals: Meal[] }).meals, pagination }
+    }
+
+    // Final fallback: no pagination wrapper
+    return { meals: unwrapApiResponse(response.data as ApiResponse<Meal[]>) }
   },
 
   async getMeal(id: string): Promise<Meal> {
@@ -44,8 +173,8 @@ export const mealService = {
   },
 
   async getMealSummary(id: string): Promise<MealSummary> {
-    const response = await apiClient.get<ApiResponse<MealSummary>>(`/meals/${id}/summary`);
-    return unwrapApiResponse(response.data);
+    const response = await apiClient.get<ApiResponse<unknown>>(`/meals/${id}/summary`);
+    return normalizeMealSummary(unwrapApiResponse(response.data));
   },
 
   async getMyVotesForMeal(mealId: string): Promise<MealMyVote[]> {

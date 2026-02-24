@@ -41,8 +41,10 @@ async function getMyFamilies(userId) {
   });
 
   return memberships.map((m) => ({
-    ...m.family.toJSON(),
-    myRole: m.role,
+    id: m.family.id,
+    name: m.family.name,
+    role: m.role,
+    memberCount: m.family.members?.length ?? 0,
   }));
 }
 

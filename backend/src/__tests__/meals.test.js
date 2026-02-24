@@ -65,6 +65,8 @@ describe('Meals API (Public)', () => {
         .expect(200);
 
       expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('meal');
+      expect(res.body.data).toHaveProperty('proposals');
     });
   });
 });

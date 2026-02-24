@@ -45,10 +45,12 @@ async function markAsRead(familyId, notificationId, userId) {
 async function markAllAsRead(familyId, userId) {
   await checkFamilyRole(userId, familyId, 'MEMBER');
 
-  await Notification.update(
+  const [updated] = await Notification.update(
     { isRead: true, readAt: new Date() },
     { where: { userId, familyId, isRead: false } }
   );
+
+  return updated;
 }
 
 async function createNotificationsForFamily(familyId, type, refId, excludeUserId) {

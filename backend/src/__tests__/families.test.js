@@ -47,7 +47,7 @@ describe('Families API (Public)', () => {
 
       expect(res.body.data.length).toBeGreaterThanOrEqual(2);
       res.body.data.forEach((f) => {
-        expect(f.myRole).toBeDefined();
+        expect(f.role).toBeDefined();
       });
     });
   });

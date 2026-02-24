@@ -5,7 +5,9 @@ async function listNotifications(req, res) {
   const limit = parseInt(req.query.limit, 10) || 20;
   const cursor = req.query.cursor || undefined;
   const notifications = await notificationService.listNotifications(familyId, req.user.userId, { limit, cursor });
-  res.json({ success: true, data: notifications });
+  const items = notifications.map((n) => (typeof n?.toJSON === 'function' ? n.toJSON() : n));
+  const nextCursor = items.length >= limit ? (items[items.length - 1]?.createdAt ?? null) : null;
+  res.json({ success: true, data: { items, nextCursor } });
 }
 
 async function unreadCount(req, res) {
@@ -19,8 +21,8 @@ async function markAsRead(req, res) {
 }
 
 async function markAllAsRead(req, res) {
-  await notificationService.markAllAsRead(req.params.familyId, req.user.userId);
-  res.json({ success: true, data: { message: 'All notifications marked as read' } });
+  const updated = await notificationService.markAllAsRead(req.params.familyId, req.user.userId);
+  res.json({ success: true, data: { updated } });
 }
 
 module.exports = { listNotifications, unreadCount, markAsRead, markAllAsRead };

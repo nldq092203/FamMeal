@@ -82,11 +82,18 @@ async function getUserVotesForMeal(mealId, userId) {
 
   const proposalIds = proposals.map((p) => p.id);
 
-  return Vote.findAll({
+  const votes = await Vote.findAll({
     where: { userId, proposalId: proposalIds },
     include: [{ model: Proposal, as: 'proposal', attributes: ['id', 'dishName'] }],
     order: [['rankPosition', 'ASC']],
   });
+
+  return votes.map((v) => ({
+    voteId: v.id,
+    proposalId: v.proposalId,
+    dishName: v.proposal?.dishName || '',
+    rankPosition: v.rankPosition,
+  }));
 }
 
 async function deleteVote(id, userId) {
