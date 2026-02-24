@@ -2,6 +2,7 @@ import apiClient from './client'
 import { unwrapApiResponse } from '@/api/unwrap'
 import type {
   ApiResponse,
+  FamilyNotification,
   MarkAllNotificationsReadResponse,
   NotificationsListResponse,
   UnreadNotificationsCountResponse,
@@ -10,6 +11,26 @@ import type {
 function unwrapMaybeApiResponse<T>(data: unknown): T {
   if (data && typeof data === 'object' && 'success' in data) return unwrapApiResponse(data as ApiResponse<T>)
   return data as T
+}
+
+function normalizeNotificationsListResponse(data: unknown, opts?: { limit?: number }): NotificationsListResponse {
+  const limit = opts?.limit
+
+  if (Array.isArray(data)) {
+    const items = data as FamilyNotification[]
+    const nextCursor =
+      typeof limit === 'number' && items.length >= limit ? (items[items.length - 1]?.createdAt ?? null) : null
+    return { items, nextCursor }
+  }
+
+  if (data && typeof data === 'object') {
+    const maybe = data as Partial<NotificationsListResponse>
+    if (Array.isArray(maybe.items)) {
+      return { items: maybe.items, nextCursor: maybe.nextCursor ?? null }
+    }
+  }
+
+  throw new Error('Unexpected notifications response shape.')
 }
 
 export const notificationService = {
@@ -21,7 +42,7 @@ export const notificationService = {
       `/families/${familyId}/notifications`,
       { params }
     )
-    return unwrapMaybeApiResponse<NotificationsListResponse>(response.data)
+    return normalizeNotificationsListResponse(unwrapMaybeApiResponse<unknown>(response.data), { limit: params?.limit })
   },
 
   async getUnreadCount(familyId: string): Promise<number> {
@@ -39,7 +60,8 @@ export const notificationService = {
     const response = await apiClient.post<MarkAllNotificationsReadResponse | ApiResponse<MarkAllNotificationsReadResponse>>(
       `/families/${familyId}/notifications/read-all`
     )
-    return unwrapMaybeApiResponse<MarkAllNotificationsReadResponse>(response.data)
+    const data = unwrapMaybeApiResponse<unknown>(response.data)
+    if (data && typeof data === 'object' && 'updated' in data) return data as MarkAllNotificationsReadResponse
+    return { updated: 0 }
   },
 }
-
